@@ -1,0 +1,19 @@
+
+## ⚙️ Local Setup
+1. `npm install` (backend root) and `cd uniconnect-frontend && npm install`
+2. Create `.env` (see `.env.example` pattern): `PORT, NODE_ENV, MONGO_URI, JWT_SECRET, FRONTEND_URL`
+3. Run backend: `npm run dev` • Run frontend: `npm run dev` (inside frontend folder)
+4. Promote an admin: `node seeder.js your@email.edu.pk`
+
+## 🔐 Security Highlights
+- Environment-aware rate limiting (strict in production)
+- `.edu` email regex enforced at the database schema level
+- Mongoose pre-save bcrypt hashing; passwords never returned (`select: false`)
+- Admin-only middleware gates; banned-user login blocking
+- Upload validation (images only, 2MB max)
+
+## 🗺️ Roadmap
+- Real-time chat (Socket.io) • Email notifications • Cloudinary storage • WebSocket live route sharing
+
+## 👨‍💻 Author
+**Sami Ullah** — Built end-to-end as a full-stack engineering portfolio piece.

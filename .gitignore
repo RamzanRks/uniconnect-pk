@@ -1,0 +1,6 @@
+node_modules/
+.env
+uploads/
+uniconnect-frontend/node_modules/
+uniconnect-frontend/dist/
+*.log
