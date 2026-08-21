@@ -49,10 +49,19 @@ export const qaAPI = {
   acceptAnswer: (id) => api.put(`/qa/answers/${id}/accept`),
 };
 
+
 export const applicationAPI = {
   apply: (projectId, data) => api.post(`/applications/project/${projectId}`, data),
   getForProject: (projectId) => api.get(`/applications/project/${projectId}`),
   updateStatus: (id, status) => api.put(`/applications/${id}/status`, { status }),
+  getMine: () => api.get('/applications/mine'),
+};
+
+export const messagesAPI = {
+  open: (data) => api.post('/messages/open', data),
+  getConversations: () => api.get('/messages/conversations'),
+  getMessages: (id) => api.get(`/messages/conversation/${id}`),
+  send: (id, text) => api.post(`/messages/conversation/${id}`, { text }),
 };
 
 export const adminAPI = {
@@ -62,6 +71,29 @@ export const adminAPI = {
   getPendingVerifications: () => api.get('/admin/verifications'),
   approveVerification: (id) => api.put(`/admin/verifications/${id}/approve`),
   rejectVerification: (id) => api.put(`/admin/verifications/${id}/reject`),
+  getStats: () => api.get('/admin/stats'),
+  getList: (type) => api.get(`/admin/list/${type}`),
+  getNameChanges: () => api.get('/admin/name-changes'),
+  approveNameChange: (id) => api.put(`/admin/name-changes/${id}/approve`),
+  rejectNameChange: (id) => api.put(`/admin/name-changes/${id}/reject`),
+};
+
+export const userAPI = {
+  checkUsername: (username) => api.get(`/users/username/${username}/available`),
+  getProfile: (id) => api.get(`/users/${id}`),
+  follow: (id) => api.post(`/users/${id}/follow`),
+  unfollow: (id) => api.post(`/users/${id}/unfollow`),
+  removeFollower: (id) => api.post(`/users/${id}/remove-follower`),
+  getFollowers: (id) => api.get(`/users/${id}/followers`),
+  getFollowing: (id) => api.get(`/users/${id}/following`),
+  report: (id, data) => api.post(`/users/${id}/report`, data),
+};
+
+export const profileAPI = {
+  update: (data) => api.put('/auth/profile', data),
+  requestNameChange: (data) => api.post('/auth/name-change', data),
+  setAvatar: (formData) => api.post('/auth/avatar', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  removeAvatar: () => api.delete('/auth/avatar'),
 };
 
 export default api;

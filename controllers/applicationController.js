@@ -1,6 +1,8 @@
 const asyncHandler = require('../utils/asyncHandler');
 const Application = require('../models/Application');
 const ProjectPost = require('../models/ProjectPost');
+const { notifyUser } = require('../utils/socket');
+
 
 // @desc    Apply to join a project
 // @route   POST /api/applications/project/:projectId
@@ -26,6 +28,7 @@ const applyToProject = asyncHandler(async (req, res) => {
     applicant: req.user._id,
     message: req.body.message,
   });
+  await notifyUser(project.creator, 'application', `${req.user.firstName} ${req.user.lastName} applied to your project "${project.title}"`, '/');
   res.status(201).json(application);
 });
 
@@ -64,7 +67,26 @@ const updateApplicationStatus = asyncHandler(async (req, res) => {
 
   application.status = status;
   await application.save();
+    await notifyUser(
+    application.applicant,
+    status === 'accepted' ? 'application_accepted' : 'application_rejected',
+    `Your application for "${application.project.title}" was ${status}.`,
+    '/'
+  );
   res.json(application);
 });
 
-module.exports = { applyToProject, getProjectApplications, updateApplicationStatus };
+// @desc    Student views their own applications
+// @route   GET /api/applications/mine
+const getMyApplications = asyncHandler(async (req, res) => {
+  const applications = await Application.find({ applicant: req.user._id })
+    .sort({ createdAt: -1 })
+    .populate({
+      path: 'project',
+      select: 'title creator',
+      populate: { path: 'creator', select: 'firstName lastName university' },
+    });
+  res.json(applications);
+});
+
+module.exports = { applyToProject, getProjectApplications, updateApplicationStatus, getMyApplications };

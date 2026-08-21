@@ -5,6 +5,7 @@ import CreateProjectModal from '../components/CreateProjectModal';
 import ReportModal from '../components/ReportModal';
 import ApplyModal from '../components/ApplyModal';
 import ApplicantsModal from '../components/ApplicantsModal';
+import { Link } from 'react-router-dom';
 
 const Feed = () => {
   const { user } = useAuth();
@@ -115,10 +116,15 @@ const Feed = () => {
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">{post.title}</h3>
-                  <p className="text-sm text-gray-500">
-                    Posted by {post.creator?.firstName} {post.creator?.lastName} • {post.creator?.university}
+                     <p className="text-sm text-gray-500">
+                    Posted by{' '}
+                    <Link to={`/user/${post.creator?._id}`} className="font-medium text-blue-600 hover:underline">
+                      {post.creator?.firstName} {post.creator?.lastName}
+                    </Link>{' '}
+                    • {post.creator?.university}
                     {post.creator?.verificationStatus === 'verified' && ' ✅'}
                   </p>
+                
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Open</span>

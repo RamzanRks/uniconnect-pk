@@ -3,6 +3,9 @@ const Report = require('../models/Report');
 const ProjectPost = require('../models/ProjectPost');
 const Question = require('../models/Question');
 const User = require('../models/User');
+const Application = require('../models/Application');
+const { notifyUser } = require('../utils/socket');
+
 
 // @desc    Get all pending reports (bulletproof version)
 // @route   GET /api/admin/reports
@@ -26,10 +29,18 @@ const getPendingReports = asyncHandler(async (req, res) => {
       } else if (r.targetType === 'QA_Post') {
         const q = await Question.findById(r.targetId)
           .populate('author', 'firstName lastName email university');
-        if (q) {
+      
+              if (q) {
           targetInfo = { _id: q._id, title: q.title, body: q.content, creator: q.author, type: 'Question' };
         }
+      } else if (r.targetType === 'User') {
+        const u = await User.findById(r.targetId);
+        if (u) {
+          targetInfo = { _id: u._id, title: `${u.firstName} ${u.lastName}'s profile`, body: `Reported area: ${r.targetArea || 'profile'}`, creator: null, type: 'User' };
+        }
       }
+      
+
     } catch (e) {
       console.error('?? Skipped a broken report target:', e.message);
     }
@@ -89,6 +100,7 @@ const approveVerification = asyncHandler(async (req, res) => {
   }
   user.verificationStatus = 'verified';
   await user.save();
+    await notifyUser(user._id, 'verification_approved', 'Your student ID was approved. You are now a ✅ Verified Student!', '/profile');
   res.json({ message: 'User verified successfully.' });
 });
 
@@ -103,7 +115,136 @@ const rejectVerification = asyncHandler(async (req, res) => {
   user.verificationStatus = 'unverified';
   user.idCardUrl = undefined;
   await user.save();
+  
+    await notifyUser(user._id, 'verification_rejected', 'Your verification request was rejected. Please upload a clearer ID card.', '/profile');
   res.json({ message: 'Verification rejected.' });
+});
+
+// @desc    Platform analytics (aggregation pipelines)
+// @route   GET /api/admin/stats
+const getStats = asyncHandler(async (req, res) => {
+  const [
+    totalUsers,
+    verifiedUsers,
+    pendingVerifications,
+    totalProjects,
+    totalQuestions,
+    totalApplications,
+    acceptedApplications,
+    totalReports,
+    pendingReports,
+    usersByUniversity,
+    reportsByReason,
+  ] = await Promise.all([
+    User.countDocuments(),
+    User.countDocuments({ verificationStatus: 'verified' }),
+    User.countDocuments({ verificationStatus: 'pending' }),
+    ProjectPost.countDocuments(),
+    Question.countDocuments(),
+    Application.countDocuments(),
+    Application.countDocuments({ status: 'accepted' }),
+    Report.countDocuments(),
+    Report.countDocuments({ status: 'pending' }),
+    User.aggregate([
+      { $group: { _id: '$university', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 6 },
+    ]),
+    Report.aggregate([
+      { $group: { _id: '$reason', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+    ]),
+  ]);
+
+  res.json({
+    totals: {
+      totalUsers,
+      verifiedUsers,
+      pendingVerifications,
+      totalProjects,
+      totalQuestions,
+      totalApplications,
+      acceptedApplications,
+      totalReports,
+      pendingReports,
+    },
+    usersByUniversity,
+    reportsByReason,
+  });
+});
+
+// @desc    Drill-down lists for analytics (full control)
+// @route   GET /api/admin/list/:type
+const getList = asyncHandler(async (req, res) => {
+  const { type } = req.params;
+  let data = [];
+
+  switch (type) {
+    case 'users':
+      data = await User.find().select('-password').sort({ createdAt: -1 });
+      break;
+    case 'verified':
+      data = await User.find({ verificationStatus: 'verified' }).select('-password').sort({ createdAt: -1 });
+      break;
+    case 'projects':
+      data = await ProjectPost.find().sort({ createdAt: -1 })
+        .populate('creator', 'firstName lastName email university');
+      break;
+    case 'questions':
+      data = await Question.find().sort({ createdAt: -1 })
+        .populate('author', 'firstName lastName email university');
+      break;
+    case 'applications':
+      data = await Application.find().sort({ createdAt: -1 })
+        .populate('applicant', 'firstName lastName email')
+        .populate({ path: 'project', select: 'title' });
+      break;
+    case 'accepted':
+      data = await Application.find({ status: 'accepted' }).sort({ createdAt: -1 })
+        .populate('applicant', 'firstName lastName email')
+        .populate({ path: 'project', select: 'title' });
+      break;
+    case 'reports':
+      data = await Report.find().sort({ createdAt: -1 })
+        .populate('reporter', 'firstName lastName');
+      break;
+    default:
+      res.status(400);
+      throw new Error('Invalid list type');
+  }
+
+  res.json(data);
+});
+
+// @desc    Pending name-change requests
+// @route   GET /api/admin/name-changes
+const getNameChanges = asyncHandler(async (req, res) => {
+    const users = await User.find({ 'nameChangeRequest.firstName': { $exists: true, $ne: null } }).select('-password');
+  res.json(users);
+});
+
+// @desc    Approve name change
+// @route   PUT /api/admin/name-changes/:id/approve
+const approveNameChange = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.params.id);
+   if (!user || !user.nameChangeRequest?.firstName) { res.status(404); throw new Error('No pending name change'); }
+  user.firstName = user.nameChangeRequest.firstName;
+  user.lastName = user.nameChangeRequest.lastName;
+  user.nameChangeRequest = undefined;
+  await user.save();
+  await notifyUser(user._id, 'name_change_approved', 'Your name change was approved by the admin.', '/profile');
+  res.json({ message: 'Name change approved.' });
+});
+
+// @desc    Reject name change
+// @route   PUT /api/admin/name-changes/:id/reject
+const rejectNameChange = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.params.id);
+   if (!user || !user.nameChangeRequest?.firstName) { res.status(404); throw new Error('No pending name change'); }
+  user.nameChangeRequest = undefined;
+  await user.save();
+  await notifyUser(user._id, 'name_change_rejected', 'Your name change request was rejected.', '/profile');
+  res.json({ message: 'Name change rejected.' });
 });
 
 module.exports = {
@@ -113,4 +254,9 @@ module.exports = {
   getPendingVerifications,
   approveVerification,
   rejectVerification,
+  getStats,
+  getList,
+  getNameChanges,
+  approveNameChange,
+  rejectNameChange,
 };

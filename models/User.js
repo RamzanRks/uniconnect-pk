@@ -6,6 +6,24 @@ const userSchema = new mongoose.Schema(
     firstName: { type: String, required: [true, 'First name is required'], trim: true },
     lastName: { type: String, required: [true, 'Last name is required'], trim: true },
 
+    // LOCKED: names can only change via admin-approved request
+      nameChangeRequest: {
+      firstName: String,
+      lastName: String,
+      requestedAt: Date,
+    },
+
+    username: {
+      type: String,
+      unique: true,
+      sparse: true,
+      lowercase: true,
+      trim: true,
+      minlength: [3, 'Username must be at least 3 characters'],
+      maxlength: [20, 'Username max 20 characters'],
+      match: [/^[a-z0-9_.]+$/, 'Only letters, numbers, underscore and dot allowed'],
+    },
+
     email: {
       type: String,
       required: [true, 'University email is required'],
@@ -20,7 +38,29 @@ const userSchema = new mongoose.Schema(
     major: { type: String, required: true, trim: true },
     skills: [{ type: String, trim: true }],
     bio: { type: String, maxlength: 300, default: '' },
+    location: { type: String, default: '' },
+
+    links: {
+      github: { type: String, default: '' },
+      linkedin: { type: String, default: '' },
+      website: { type: String, default: '' },
+    },
+
+    education: [
+      {
+        institution: { type: String, required: true },
+        degree: { type: String, required: true },
+        field: { type: String, default: '' },
+        startYear: { type: Number },
+        endYear: { type: Number },
+      },
+    ],
+
+    avatarUrl: { type: String, default: null },
     idCardUrl: { type: String, default: null },
+
+    followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 
     role: { type: String, enum: ['student', 'admin'], default: 'student' },
     verificationStatus: { type: String, enum: ['unverified', 'pending', 'verified'], default: 'unverified' },
@@ -34,7 +74,6 @@ const userSchema = new mongoose.Schema(
 userSchema.index({ university: 1, major: 1 });
 userSchema.index({ skills: 1 });
 
-// SECURITY: Hash password before saving (Mongoose 8 async style)
 userSchema.pre('save', async function () {
   if (!this.isModified('password')) return;
   const salt = await bcrypt.genSalt(12);

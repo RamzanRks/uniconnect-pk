@@ -2,6 +2,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const Question = require('../models/Question');
 const Answer = require('../models/Answer');
 const Report = require('../models/Report');
+const { notifyUser } = require('../utils/socket');
 
 // @desc    Get all open questions
 // @route   GET /api/qa
@@ -63,6 +64,10 @@ const createAnswer = asyncHandler(async (req, res) => {
     question: question._id,
     author: req.user._id,
   });
+  
+    if (question.author.toString() !== req.user._id.toString()) {
+    await notifyUser(question.author, 'answer', `${req.user.firstName} ${req.user.lastName} answered your question "${question.title}"`, `/qa/${question._id}`);
+  }
   res.status(201).json(answer);
 });
 

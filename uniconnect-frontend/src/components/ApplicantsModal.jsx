@@ -1,10 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
-import { applicationAPI } from '../services/api';
+﻿import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { applicationAPI, messagesAPI } from '../services/api';
 
 const ApplicantsModal = ({ projectId, onClose }) => {
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   const fetchApps = useCallback(async () => {
     try {
@@ -27,6 +29,16 @@ const ApplicantsModal = ({ projectId, onClose }) => {
       fetchApps();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to update');
+    }
+  };
+
+  const startChat = async (a) => {
+    try {
+      const { data } = await messagesAPI.open({ projectId, applicantId: a.applicant._id });
+      onClose();
+      navigate(`/messages?c=${data._id}`);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Chat unavailable');
     }
   };
 
@@ -75,16 +87,17 @@ const ApplicantsModal = ({ projectId, onClose }) => {
                 <p className="text-sm text-gray-700 mt-2 italic">"{a.message}"</p>
                 <p className="text-xs text-gray-400 mt-1">{a.applicant?.email}</p>
 
-                {a.status === 'pending' && (
-                  <div className="flex gap-2 mt-3">
-                    <button onClick={() => updateStatus(a._id, 'accepted')} className="bg-green-600 text-white text-xs px-3 py-1.5 rounded hover:bg-green-700 transition">
-                      ✅ Accept
-                    </button>
-                    <button onClick={() => updateStatus(a._id, 'rejected')} className="bg-red-600 text-white text-xs px-3 py-1.5 rounded hover:bg-red-700 transition">
-                      ❌ Reject
-                    </button>
-                  </div>
-                )}
+                <div className="flex gap-2 mt-3">
+                  {a.status === 'pending' && (
+                    <>
+                      <button onClick={() => updateStatus(a._id, 'accepted')} className="bg-green-600 text-white text-xs px-3 py-1.5 rounded hover:bg-green-700 transition">✅ Accept</button>
+                      <button onClick={() => updateStatus(a._id, 'rejected')} className="bg-red-600 text-white text-xs px-3 py-1.5 rounded hover:bg-red-700 transition">❌ Reject</button>
+                    </>
+                  )}
+                  {a.status === 'accepted' && (
+                    <button onClick={() => startChat(a)} className="bg-blue-600 text-white text-xs px-3 py-1.5 rounded hover:bg-blue-700 transition">💬 Message</button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

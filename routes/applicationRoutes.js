@@ -5,8 +5,10 @@ const {
   applyToProject,
   getProjectApplications,
   updateApplicationStatus,
+  getMyApplications,
 } = require('../controllers/applicationController');
 
+router.get('/mine', protect, getMyApplications);
 router.route('/project/:projectId')
   .post(protect, applyToProject)
   .get(protect, getProjectApplications);

@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { userAPI } from '../services/api';
 
 const AuthPage = ({ mode }) => {
   const [formData, setFormData] = useState({
-    firstName: '', lastName: '', email: '', password: '', university: '', major: '', skills: ''
+    firstName: '', lastName: '', email: '', password: '', university: '', major: '', skills: '', username: '',
   });
+  const [usernameStatus, setUsernameStatus] = useState('');
   const [error, setError] = useState('');
   const { login, register } = useAuth();
   const navigate = useNavigate();
@@ -14,13 +16,21 @@ const AuthPage = ({ mode }) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleUsername = async (value) => {
+    setFormData({ ...formData, username: value });
+    if (!value || value.length < 3) { setUsernameStatus(''); return; }
+    try {
+      const { data } = await userAPI.checkUsername(value);
+      setUsernameStatus(data.available ? '? Available' : '? Taken');
+    } catch (e) { setUsernameStatus(''); }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     try {
       if (mode === 'register') {
-        // Convert skills string to array
-        const payload = { ...formData, skills: formData.skills.split(',').map(s => s.trim()) };
+        const payload = { ...formData, skills: formData.skills.split(',').map((s) => s.trim()).filter(Boolean) };
         await register(payload);
       } else {
         await login({ email: formData.email, password: formData.password });
@@ -39,9 +49,7 @@ const AuthPage = ({ mode }) => {
             {mode === 'register' ? 'Join UniConnect' : 'Welcome Back'}
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            {mode === 'register' 
-              ? 'Strictly for university students. Use your .edu email.' 
-              : 'Sign in to continue'}
+            {mode === 'register' ? 'Strictly for university students. Use your .edu email.' : 'Sign in to continue'}
           </p>
         </div>
 
@@ -54,6 +62,10 @@ const AuthPage = ({ mode }) => {
               <input name="lastName" placeholder="Last Name" required className="input-field" onChange={handleChange} />
               <input name="university" placeholder="University" required className="input-field" onChange={handleChange} />
               <input name="major" placeholder="Major (e.g., CS)" required className="input-field" onChange={handleChange} />
+              <div className="col-span-2">
+                <input name="username" placeholder="Username (unique, 3-20 chars)" className="input-field" onChange={(e) => handleUsername(e.target.value)} />
+                {usernameStatus && <p className="text-xs mt-1 text-gray-600">{usernameStatus}</p>}
+              </div>
               <input name="skills" placeholder="Skills (comma separated)" className="input-field col-span-2" onChange={handleChange} />
             </div>
           )}
@@ -67,9 +79,9 @@ const AuthPage = ({ mode }) => {
             {mode === 'register' ? 'Create Account' : 'Sign In'}
           </button>
         </form>
-        
+
         <p className="text-center text-sm text-gray-500 mt-4">
-          {mode === 'register' 
+          {mode === 'register'
             ? <a href="/login" className="text-blue-600 hover:underline">Already have an account? Login</a>
             : <a href="/register" className="text-blue-600 hover:underline">Need an account? Register</a>}
         </p>

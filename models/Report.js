@@ -4,17 +4,30 @@ const reportSchema = new mongoose.Schema(
   {
     targetType: { type: String, enum: ['ProjectPost', 'User', 'QA_Post'], required: true },
     targetId: { type: mongoose.Schema.Types.ObjectId, required: true, refPath: 'targetType' },
-    
-    reporter: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    
-    reason: { 
-      type: String, 
-      enum: ['Spam', 'Inappropriate', 'Fake Profile', 'Harassment', 'Other'], 
-      required: true 
+
+    // WHICH part is being reported (for profile reports)
+    targetArea: {
+      type: String,
+      enum: ['post', 'project', 'question', 'dp', 'profile_info', 'other'],
+      default: 'other',
     },
-    details: { type: String, maxlength: 500 }, // Optional context from the reporter
-    
-    status: { type: String, enum: ['pending', 'resolved'], default: 'pending' }
+
+    reporter: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+
+    reason: {
+      type: String,
+      enum: [
+        'Spam', 'Harassment', 'Bullying', 'Hate Speech', 'Sexual Content',
+        'Nudity', 'Violence', 'Threats', 'Fake Profile', 'Impersonation',
+        'Misinformation', 'Plagiarism', 'Copyright Violation', 'Fraud or Scam',
+        'Self-Harm', 'Drug Promotion', 'Privacy Violation', 'Inappropriate DP',
+        'Offensive Username', 'Other',
+      ],
+      required: true,
+    },
+    details: { type: String, maxlength: 500 },
+
+    status: { type: String, enum: ['pending', 'resolved'], default: 'pending' },
   },
   { timestamps: true }
 );
