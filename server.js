@@ -6,6 +6,7 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
+const fs = require('fs');
 const http = require('http');
 const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/db');
@@ -18,10 +19,10 @@ connectDB();
 const app = express();
 
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allow frontend (different port) to load images
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (process.env.FRONTEND_URL || 'http://localhost:5173').split(','),
   credentials: true
 }));
 
@@ -33,6 +34,8 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 app.use(express.json({ limit: '10kb' }));
+
+// Serve uploaded ID card / avatar images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use('/api/auth', require('./routes/authRoutes'));
@@ -43,6 +46,18 @@ app.use('/api/applications', require('./routes/applicationRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/messages', require('./routes/messageRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/bookmarks', require('./routes/bookmarkRoutes'));
+app.use('/api/ratings', require('./routes/ratingRoutes'));
+app.use('/api/reactions', require('./routes/reactionRoutes'));
+
+// Production: serve the built React app (single-origin)
+if (process.env.NODE_ENV === 'production') {
+  const distPath = path.join(__dirname, 'uniconnect-frontend', 'dist');
+  if (fs.existsSync(distPath)) {
+    app.use(express.static(distPath));
+    app.get('*', (req, res) => res.sendFile(path.join(distPath, 'index.html')));
+  }
+}
 
 app.use(notFound);
 app.use(globalErrorHandler);
@@ -51,6 +66,6 @@ const server = http.createServer(app);
 initSocket(server);
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT,'0.0.0.0', () => {
+server.listen(PORT, () => {
   console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
 });

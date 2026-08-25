@@ -1,6 +1,6 @@
-﻿import { useState } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { profileAPI, userAPI, authAPI, SERVER_URL } from '../services/api';
+import { profileAPI, userAPI, authAPI, topicAPI, projectAPI, SERVER_URL } from '../services/api';
 import AvatarCropModal from '../components/AvatarCropModal';
 import FollowListModal from '../components/FollowListModal';
 
@@ -9,6 +9,11 @@ const ProfilePage = () => {
   const [showCrop, setShowCrop] = useState(false);
   const [editing, setEditing] = useState(false);
   const [followList, setFollowList] = useState(null);
+  const [showViews, setShowViews] = useState(false);
+  const [views, setViews] = useState([]);
+  const [myProjects, setMyProjects] = useState([]);
+  const [viewCount, setViewCount] = useState(0);
+  const [topics, setTopics] = useState([]);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [usernameStatus, setUsernameStatus] = useState('');
@@ -29,6 +34,19 @@ const ProfilePage = () => {
   const [edu, setEdu] = useState(user?.education || []);
   const [eduForm, setEduForm] = useState({ institution: '', degree: '', field: '', startYear: '', endYear: '' });
   const [nameReq, setNameReq] = useState({ firstName: '', lastName: '' });
+
+  const loadExtra = async () => {
+    try {
+      const { data } = await userAPI.getProfile(user._id);
+      setMyProjects(data.projects || []);
+      setViewCount(data.viewCount || 0);
+    } catch (e) { /* ignore */ }
+    topicAPI.popular().then(({ data }) => setTopics(data)).catch(() => {});
+  };
+
+  useEffect(() => {
+    if (user) loadExtra();
+  }, [user?._id]);
 
   if (!user) return null;
 
@@ -115,12 +133,49 @@ const ProfilePage = () => {
     }
   };
 
+  const updateProgress = async (id, progress) => {
+    await projectAPI.updateProgress(id, progress);
+    loadExtra();
+  };
+
+  const togglePin = async (id) => {
+    try {
+      await projectAPI.togglePin(id);
+      await refreshUser();
+      loadExtra();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Pin failed');
+    }
+  };
+
+  const toggleTopic = async (tag) => {
+    await topicAPI.toggle(tag);
+    await refreshUser();
+  };
+
+  const openViews = async () => {
+    setShowViews(true);
+    const { data } = await userAPI.myViews();
+    setViews(data);
+  };
+
+  const handleExport = async () => {
+    const { data } = await authAPI.exportData();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'uniconnect-my-data.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const badge =
     user.verificationStatus === 'verified'
       ? { text: '✅ Verified Student', cls: 'bg-green-100 text-green-800' }
       : user.verificationStatus === 'pending'
       ? { text: '⏳ Verification Pending', cls: 'bg-yellow-100 text-yellow-800' }
-      : { text: '⚪ Unverified', cls: 'bg-gray-100 text-gray-600' };
+      : { text: ' Unverified', cls: 'bg-gray-100 text-gray-600' };
 
   return (
     <div className="max-w-3xl mx-auto p-6">
@@ -155,14 +210,18 @@ const ProfilePage = () => {
               <button onClick={() => setFollowList('following')} className="text-sm text-gray-700 hover:text-blue-600">
                 <span className="font-bold">{(user.following || []).length}</span> Following
               </button>
+              <button onClick={openViews} className="text-sm text-gray-700 hover:text-blue-600">
+                👁️ <span className="font-bold">{viewCount}</span> Views
+              </button>
             </div>
 
-            <div className="flex gap-2 mt-4">
+            <div className="flex gap-2 mt-4 flex-wrap">
               <button onClick={() => setShowCrop(true)} className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700">📷 Change Photo</button>
               {avatarSrc && (
-                <button onClick={handleRemoveAvatar} className="text-xs bg-gray-100 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-200">️ Remove</button>
+                <button onClick={handleRemoveAvatar} className="text-xs bg-gray-100 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-200">🗑️ Remove</button>
               )}
               <button onClick={() => setEditing(!editing)} className="text-xs bg-gray-100 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-200">✏️ Edit Profile</button>
+              <button onClick={handleExport} className="text-xs bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700">📤 Export My Data</button>
             </div>
           </div>
         </div>
@@ -206,8 +265,8 @@ const ProfilePage = () => {
               <input value={form.username} onChange={(e) => checkUsername(e.target.value)} className="input-field" placeholder="unique_username (3-20 chars, a-z 0-9 _ .)" />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <input name="university" value={form.university} onChange={(e) => setForm({ ...form, university: e.target.value })} className="input-field" placeholder="University" />
-              <input name="major" value={form.major} onChange={(e) => setForm({ ...form, major: e.target.value })} className="input-field" placeholder="Major" />
+              <input value={form.university} onChange={(e) => setForm({ ...form, university: e.target.value })} className="input-field" placeholder="University" />
+              <input value={form.major} onChange={(e) => setForm({ ...form, major: e.target.value })} className="input-field" placeholder="Major" />
             </div>
             <input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} className="input-field" placeholder="📍 Location (e.g., Lahore, PK)" />
             <input value={form.skills} onChange={(e) => setForm({ ...form, skills: e.target.value })} className="input-field" placeholder="Skills (comma separated)" />
@@ -218,7 +277,6 @@ const ProfilePage = () => {
               <input value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} className="input-field" placeholder="Website URL" />
             </div>
 
-            {/* Education editor */}
             <div className="border rounded-lg p-4">
               <p className="text-sm font-medium text-gray-700 mb-2">Education History</p>
               {edu.map((e, i) => (
@@ -244,13 +302,60 @@ const ProfilePage = () => {
         )}
       </div>
 
+      {/* My Projects: progress + pins */}
+      {myProjects.length > 0 && (
+        <div className="bg-white rounded-xl shadow p-8 mt-6">
+          <h2 className="text-lg font-bold text-gray-800 mb-4">📌 My Projects</h2>
+          {myProjects.map((p) => (
+            <div key={p._id} className="flex justify-between items-center border-b border-gray-100 py-3 last:border-0">
+              <div>
+                <p className="font-medium text-gray-900">
+                  {p.title} {(user.pinnedProjects || []).some((x) => x === p._id || x?._id === p._id) && '📍'}
+                </p>
+                <p className="text-xs text-gray-500 capitalize">Progress: {p.progress}</p>
+              </div>
+              <div className="flex gap-2 items-center">
+                <select value={p.progress} onChange={(e) => updateProgress(p._id, e.target.value)} className="text-xs border border-gray-300 rounded px-2 py-1">
+                  <option value="planning">Planning</option>
+                  <option value="building">Building</option>
+                  <option value="completed">Completed</option>
+                </select>
+                <button onClick={() => togglePin(p._id)} className="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200">
+                  {(user.pinnedProjects || []).some((x) => x === p._id || x?._id === p._id) ? 'Unpin' : 'Pin'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Topic following */}
+      <div className="bg-white rounded-xl shadow p-8 mt-6">
+        <h2 className="text-lg font-bold text-gray-800 mb-2">#️⃣ Follow Topics</h2>
+        <p className="text-sm text-gray-500 mb-4">Personalize your "For You" feed on the Project Board.</p>
+        <div className="flex flex-wrap gap-2">
+          {topics.map((t) => {
+            const followed = (user.followedTopics || []).includes(t.tag);
+            return (
+              <button
+                key={t.tag}
+                onClick={() => toggleTopic(t.tag)}
+                className={`text-xs px-3 py-1.5 rounded-full border transition ${followed ? 'bg-purple-600 text-white border-purple-600' : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'}`}
+              >
+                #{t.tag} ({t.count})
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Locked Name Change Card */}
       <div className="bg-white rounded-xl shadow p-8 mt-6">
         <h2 className="text-lg font-bold text-gray-800">🔒 Legal Name (Admin-Approved Changes Only)</h2>
         <p className="text-sm text-gray-500 mt-1">
           Your first and last name are locked for trust & safety. Request a change and an admin will review it.
         </p>
-              {user.nameChangeRequest?.firstName ? (
+        {user.nameChangeRequest?.firstName ? (
           <p className="mt-4 text-sm text-yellow-700 bg-yellow-50 p-3 rounded">
             ⏳ Pending request: {user.nameChangeRequest.firstName} {user.nameChangeRequest.lastName}
           </p>
@@ -284,6 +389,29 @@ const ProfilePage = () => {
 
       {showCrop && <AvatarCropModal onClose={() => setShowCrop(false)} />}
       {followList && <FollowListModal ownerId={user._id} mode={followList} onClose={() => setFollowList(null)} />}
+      {showViews && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 max-h-[70vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800">👁️ Profile Views</h2>
+              <button onClick={() => setShowViews(false)} className="text-gray-500 hover:text-gray-800 text-2xl leading-none">&times;</button>
+            </div>
+            {views.length === 0 ? (
+              <p className="text-gray-500 text-center">No views yet.</p>
+            ) : (
+              views.map((v) => (
+                <div key={v._id} className="flex justify-between items-center border-b border-gray-100 py-2">
+                  <p className="text-sm text-gray-800">
+                    {v.viewer?.firstName} {v.viewer?.lastName}
+                    <span className="text-xs text-gray-400"> • {v.viewer?.university}</span>
+                  </p>
+                  <p className="text-xs text-gray-400">{new Date(v.viewedAt).toLocaleDateString()}</p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

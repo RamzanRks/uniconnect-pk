@@ -5,7 +5,12 @@ const notificationSchema = new mongoose.Schema(
     recipient: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     type: {
       type: String,
-           enum: ['application', 'application_accepted', 'application_rejected', 'answer', 'verification_approved', 'verification_rejected', 'follow', 'name_change_approved', 'name_change_rejected'],
+      enum: [
+        'application', 'application_accepted', 'application_rejected',
+        'answer', 'verification_approved', 'verification_rejected',
+        'follow', 'name_change_approved', 'name_change_rejected',
+        'rating', 'reaction', // NEW (Milestone 4)
+      ],
       required: true,
     },
     text: { type: String, required: true },
@@ -14,7 +19,5 @@ const notificationSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
-notificationSchema.index({ recipient: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Notification', notificationSchema);

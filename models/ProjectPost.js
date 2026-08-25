@@ -16,11 +16,10 @@ const projectPostSchema = new mongoose.Schema(
 
     creator: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
 
-    status: {
-      type: String,
-      enum: ['open', 'closed', 'hidden'],
-      default: 'open',
-    },
+    status: { type: String, enum: ['open', 'closed', 'hidden'], default: 'open' },
+
+    // NEW (Milestone 4): owner-controlled progress tracker
+    progress: { type: String, enum: ['planning', 'building', 'completed'], default: 'planning' },
 
     // Anti-Troll Tracking
     reportCount: { type: Number, default: 0 },
@@ -33,7 +32,7 @@ const projectPostSchema = new mongoose.Schema(
 projectPostSchema.index({ status: 1, createdAt: -1 });
 projectPostSchema.index({ requiredSkills: 1 });
 
-// AUTOMATION: If a post hits 3 reports, auto-hide it (FIXED FOR MONGOOSE 8)
+// AUTOMATION: If a post hits 3 reports, auto-hide it (Mongoose 8 async style)
 projectPostSchema.pre('save', async function () {
   if (this.reportCount >= 3 && this.status !== 'hidden') {
     this.status = 'hidden';

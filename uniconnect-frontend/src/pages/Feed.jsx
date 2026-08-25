@@ -1,15 +1,19 @@
 ﻿import { useState, useEffect, useCallback } from 'react';
-import { projectAPI } from '../services/api';
+import { Link } from 'react-router-dom';
+import { projectAPI, presenceAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import CreateProjectModal from '../components/CreateProjectModal';
 import ReportModal from '../components/ReportModal';
 import ApplyModal from '../components/ApplyModal';
 import ApplicantsModal from '../components/ApplicantsModal';
-import { Link } from 'react-router-dom';
+import ReactionBar from '../components/ReactionBar';
+import BookmarkButton from '../components/BookmarkButton';
 
 const Feed = () => {
   const { user } = useAuth();
   const [posts, setPosts] = useState([]);
+  const [presence, setPresence] = useState({});
+  const [tab, setTab] = useState('all');
   const [showModal, setShowModal] = useState(false);
   const [reportPostId, setReportPostId] = useState(null);
   const [applyPostId, setApplyPostId] = useState(null);
@@ -19,7 +23,6 @@ const Feed = () => {
   const [searchInput, setSearchInput] = useState('');
   const [filters, setFilters] = useState({ search: '', skill: 'all', university: 'all' });
 
-  // Load filter dropdown options
   useEffect(() => {
     projectAPI.getFilterOptions()
       .then(({ data }) => setOptions(data))
@@ -37,16 +40,22 @@ const Feed = () => {
   const fetchPosts = useCallback(async () => {
     try {
       const params = {};
+      if (tab === 'foryou') params.feed = 'forYou';
       if (filters.search) params.search = filters.search;
       if (filters.skill !== 'all') params.skill = filters.skill;
       if (filters.university !== 'all') params.university = filters.university;
 
       const { data } = await projectAPI.getProjects(params);
       setPosts(data.posts);
+
+      const ids = data.posts.map((p) => p.creator?._id).filter(Boolean);
+      if (ids.length) {
+        presenceAPI.get(ids).then(({ data: pr }) => setPresence(pr)).catch(() => {});
+      }
     } catch (err) {
       console.error('Failed to load projects', err);
     }
-  }, [filters]);
+  }, [filters, tab]);
 
   useEffect(() => {
     fetchPosts();
@@ -62,7 +71,20 @@ const Feed = () => {
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Project Board</h1>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setTab('all')}
+            className={`px-4 py-2 rounded text-sm font-medium transition ${tab === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+          >
+            🌍 All Projects
+          </button>
+          <button
+            onClick={() => setTab('foryou')}
+            className={`px-4 py-2 rounded text-sm font-medium transition ${tab === 'foryou' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+          >
+            ✨ For You
+          </button>
+        </div>
         <button
           onClick={() => setShowModal(true)}
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
@@ -109,25 +131,31 @@ const Feed = () => {
 
       <div className="grid gap-6">
         {posts.length === 0 ? (
-          <p className="text-gray-500 text-center">No projects match your search. Try clearing filters.</p>
+          <p className="text-gray-500 text-center">
+            {tab === 'foryou' ? 'Follow topics on your profile to personalize this feed.' : 'No projects match your search. Try clearing filters.'}
+          </p>
         ) : (
           posts.map((post) => (
             <div key={post._id} className="bg-white p-6 rounded-lg shadow border border-gray-100 hover:shadow-md transition">
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">{post.title}</h3>
-                     <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500">
                     Posted by{' '}
                     <Link to={`/user/${post.creator?._id}`} className="font-medium text-blue-600 hover:underline">
                       {post.creator?.firstName} {post.creator?.lastName}
                     </Link>{' '}
                     • {post.creator?.university}
                     {post.creator?.verificationStatus === 'verified' && ' ✅'}
+                    {presence[post.creator?._id] && (
+                      <span className="inline-block w-2 h-2 bg-green-500 rounded-full ml-1 align-middle" title="Online now" />
+                    )}
                   </p>
-                
                 </div>
                 <div className="flex items-center gap-2">
+                  <span className="bg-purple-100 text-purple-700 text-xs px-2 py-1 rounded-full capitalize">{post.progress}</span>
                   <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Open</span>
+                  <BookmarkButton type="ProjectPost" id={post._id} />
                   <button
                     onClick={() => setReportPostId(post._id)}
                     title="Report this post"
@@ -147,6 +175,8 @@ const Feed = () => {
                   </span>
                 ))}
               </div>
+
+              <ReactionBar type="ProjectPost" id={post._id} />
 
               <div className="mt-4 flex justify-between items-center">
                 <p className="text-xs text-gray-400">

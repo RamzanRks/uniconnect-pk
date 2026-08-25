@@ -1,15 +1,15 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { ThemeProvider } from './context/ThemeContext';
 import AuthPage from './pages/AuthPage';
 import Feed from './pages/Feed';
 import AdminDashboard from './pages/AdminDashboard';
 import QAPage from './pages/QAPage';
 import ProfilePage from './pages/ProfilePage';
-import MessagesPage from './pages/MessagesPage';
-import MyApplicationsPage from './pages/MyApplicationsPage';
-import Navbar from './components/Navbar';
 import PublicProfilePage from './pages/PublicProfilePage';
+import SavedPage from './pages/SavedPage';
+import Navbar from './components/Navbar';
 
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -25,26 +25,27 @@ const AdminRoute = ({ children }) => {
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <NotificationProvider>
-          <div className="min-h-screen bg-gray-50">
-            <Navbar />
-            <Routes>
-              <Route path="/login" element={<AuthPage mode="login" />} />
-              <Route path="/register" element={<AuthPage mode="register" />} />
-              <Route path="/" element={<PrivateRoute><Feed /></PrivateRoute>} />
-              <Route path="/qa" element={<PrivateRoute><QAPage /></PrivateRoute>} />
-              <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
-              <Route path="/user/:id" element={<PrivateRoute><PublicProfilePage /></PrivateRoute>} />
-              <Route path="/messages" element={<PrivateRoute><MessagesPage /></PrivateRoute>} />
-              <Route path="/applications" element={<PrivateRoute><MyApplicationsPage /></PrivateRoute>} />
-              <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-            </Routes>
-          </div>
-        </NotificationProvider>
-      </Router>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <Router>
+          <NotificationProvider>
+            <div className="min-h-screen bg-gray-50">
+              <Navbar />
+              <Routes>
+                <Route path="/login" element={<AuthPage mode="login" />} />
+                <Route path="/register" element={<AuthPage mode="register" />} />
+                <Route path="/" element={<PrivateRoute><Feed /></PrivateRoute>} />
+                <Route path="/qa" element={<PrivateRoute><QAPage /></PrivateRoute>} />
+                <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
+                <Route path="/user/:id" element={<PrivateRoute><PublicProfilePage /></PrivateRoute>} />
+                <Route path="/saved" element={<PrivateRoute><SavedPage /></PrivateRoute>} />
+                <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+              </Routes>
+            </div>
+          </NotificationProvider>
+        </Router>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

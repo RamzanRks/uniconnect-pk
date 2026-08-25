@@ -1,5 +1,10 @@
 const asyncHandler = require('../utils/asyncHandler');
 const User = require('../models/User');
+const ProjectPost = require('../models/ProjectPost');
+const Question = require('../models/Question');
+const Answer = require('../models/Answer');
+const Application = require('../models/Application');
+const Rating = require('../models/Rating');
 const generateToken = require('../utils/generateToken');
 
 const cleanUsername = async (username, excludeId = null) => {
@@ -102,7 +107,7 @@ const requestNameChange = asyncHandler(async (req, res) => {
   const { firstName, lastName } = req.body;
   if (!firstName || !lastName) { res.status(400); throw new Error('Both names are required'); }
   const user = await User.findById(req.user._id);
-   user.nameChangeRequest = { firstName, lastName, requestedAt: new Date() };
+  user.nameChangeRequest = { firstName, lastName, requestedAt: new Date() };
   await user.save();
   res.json({ message: 'Name change requested. Awaiting admin approval.' });
 });
@@ -141,7 +146,21 @@ const requestVerification = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    GDPR-style export of ALL my data
+// @route   GET /api/auth/export
+const exportMyData = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id).select('-password');
+  const [projects, questions, answers, applications, ratings] = await Promise.all([
+    ProjectPost.find({ creator: user._id }),
+    Question.find({ author: user._id }),
+    Answer.find({ author: user._id }),
+    Application.find({ applicant: user._id }),
+    Rating.find({ rater: user._id }),
+  ]);
+  res.json({ user, projects, questions, answers, applications, ratings, exportedAt: new Date() });
+});
+
 module.exports = {
   registerUser, loginUser, getUserProfile, updateProfile,
-  requestNameChange, setAvatar, removeAvatar, requestVerification,
+  requestNameChange, setAvatar, removeAvatar, requestVerification, exportMyData,
 };

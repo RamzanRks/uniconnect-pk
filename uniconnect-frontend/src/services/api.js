@@ -24,21 +24,22 @@ export const authAPI = {
   getProfile: () => api.get('/auth/profile'),
   updateProfile: (data) => api.put('/auth/profile', data),
   requestVerification: (formData) =>
-    api.post('/auth/verify', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
+    api.post('/auth/verify', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  requestNameChange: (data) => api.post('/auth/name-change', data),
+  setAvatar: (formData) =>
+    api.post('/auth/avatar', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  removeAvatar: () => api.delete('/auth/avatar'),
+  exportData: () => api.get('/auth/export'),
 };
-
 
 export const projectAPI = {
   getProjects: (params) => api.get('/projects', { params }),
   createProject: (projectData) => api.post('/projects', projectData),
   reportProject: (id, reportData) => api.post(`/projects/${id}/report`, reportData),
   getFilterOptions: () => api.get('/projects/filters'),
+  updateProgress: (id, progress) => api.put(`/projects/${id}/progress`, { progress }),
+  togglePin: (id) => api.post(`/projects/${id}/pin`),
 };
-
-
-
 
 export const qaAPI = {
   getQuestions: () => api.get('/qa'),
@@ -49,19 +50,10 @@ export const qaAPI = {
   acceptAnswer: (id) => api.put(`/qa/answers/${id}/accept`),
 };
 
-
 export const applicationAPI = {
   apply: (projectId, data) => api.post(`/applications/project/${projectId}`, data),
   getForProject: (projectId) => api.get(`/applications/project/${projectId}`),
   updateStatus: (id, status) => api.put(`/applications/${id}/status`, { status }),
-  getMine: () => api.get('/applications/mine'),
-};
-
-export const messagesAPI = {
-  open: (data) => api.post('/messages/open', data),
-  getConversations: () => api.get('/messages/conversations'),
-  getMessages: (id) => api.get(`/messages/conversation/${id}`),
-  send: (id, text) => api.post(`/messages/conversation/${id}`, { text }),
 };
 
 export const adminAPI = {
@@ -87,13 +79,40 @@ export const userAPI = {
   getFollowers: (id) => api.get(`/users/${id}/followers`),
   getFollowing: (id) => api.get(`/users/${id}/following`),
   report: (id, data) => api.post(`/users/${id}/report`, data),
+  getActivity: (id) => api.get(`/users/${id}/activity`),
+  myViews: () => api.get('/users/me/views'),
 };
 
 export const profileAPI = {
   update: (data) => api.put('/auth/profile', data),
   requestNameChange: (data) => api.post('/auth/name-change', data),
-  setAvatar: (formData) => api.post('/auth/avatar', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  setAvatar: (formData) =>
+    api.post('/auth/avatar', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   removeAvatar: () => api.delete('/auth/avatar'),
+};
+
+export const bookmarkAPI = {
+  toggle: (type, id) => api.post(`/bookmarks/${type}/${id}`),
+  get: () => api.get('/bookmarks'),
+};
+
+export const ratingAPI = {
+  create: (data) => api.post('/ratings', data),
+  getUser: (id) => api.get(`/ratings/user/${id}`),
+};
+
+export const reactionAPI = {
+  toggle: (type, id, emoji) => api.post(`/reactions/${type}/${id}`, { emoji }),
+  get: (type, id) => api.get(`/reactions/${type}/${id}`),
+};
+
+export const topicAPI = {
+  popular: () => api.get('/users/topics/popular'),
+  toggle: (tag) => api.post(`/users/topics/${encodeURIComponent(tag)}/toggle`),
+};
+
+export const presenceAPI = {
+  get: (ids) => api.get(`/users/presence?ids=${ids.join(',')}`),
 };
 
 export default api;

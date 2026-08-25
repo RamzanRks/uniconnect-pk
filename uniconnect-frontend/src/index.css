@@ -2,7 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom class we used in the AuthPage for beautiful input boxes */
 .input-field {
-  @apply w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition;
+  @apply w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900;
 }
+
+/* 🌙 DARK MODE — global overrides (applies to ALL existing components) */
+.dark body { background-color: #0f172a; }
+.dark .bg-white { background-color: #1e293b !important; }
+.dark .bg-gray-50 { background-color: #0f172a !important; }
+.dark .bg-gray-100 { background-color: #334155 !important; }
+.dark .hover\:bg-gray-200:hover { background-color: #475569 !important; }
+.dark .text-gray-900, .dark .text-gray-800 { color: #f1f5f9 !important; }
+.dark .text-gray-700, .dark .text-gray-600 { color: #cbd5e1 !important; }
+.dark .text-gray-500, .dark .text-gray-400 { color: #94a3b8 !important; }
+.dark .border-gray-100, .dark .border-gray-200, .dark .border-gray-300 { border-color: #334155 !important; }
+.dark input, .dark textarea, .dark select {
+  background-color: #0f172a !important;
+  color: #f1f5f9 !important;
+  border-color: #334155 !important;
+}
+.dark .shadow, .dark .shadow-md, .dark .shadow-lg { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6) !important; }
