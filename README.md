@@ -1,4 +1,4 @@
-# 🎓 UniConnect PK — Verified Student Collaboration Network
+﻿# 🎓 UniConnect PK — Verified Student Collaboration Network
 
 A full-stack, production-grade platform connecting university students across Pakistan for **project collaboration, peer Q&A, and verified networking** — with a complete Trust & Safety moderation system.
 
@@ -23,3 +23,6 @@ A full-stack, production-grade platform connecting university students across Pa
 | Hosting   | Vercel (frontend) + Render (backend) |
 
 ## 🏗️ Architecture
+
+- **Frontend:** https://uniconnect-pk-six.vercel.app
+- **Backend API:** https://uniconnect-pk--ramzannnkarim.replit.app
