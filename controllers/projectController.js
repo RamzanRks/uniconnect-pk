@@ -8,7 +8,7 @@ const User = require('../models/User');
 const createProjectPost = asyncHandler(async (req, res) => {
   const { title, description, requiredSkills, deadline } = req.body;
 
-  const post = await ProjectPost.create({
+    const post = await ProjectPost.create({
     title,
     description,
     requiredSkills,
@@ -16,7 +16,12 @@ const createProjectPost = asyncHandler(async (req, res) => {
     creator: req.user._id,
   });
 
+  // Award points for creating a project
+  const { awardPoints } = require('../utils/points');
+  await awardPoints(req.user._id, 5);
+
   res.status(201).json(post);
+ 
 });
 
 // @desc    Get open project posts with search, filters & personalized feed
@@ -28,18 +33,22 @@ const getProjectPosts = asyncHandler(async (req, res) => {
   const filter = { status: 'open' };
 
   // NEW (Milestone 4): personalized "For You" feed from followed topics
+   // NEW (Milestone 4): personalized "For You" feed from followed topics
   if (req.query.feed === 'forYou') {
+    let topics = [];
     const token = (req.headers.authorization || '').split(' ')[1];
     if (token) {
       try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const me = await User.findById(decoded.id);
-        const topics = me?.followedTopics || [];
-        if (topics.length) {
-          const escaped = topics.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-          filter.requiredSkills = { $regex: `^(${escaped.join('|')})$`, $options: 'i' };
-        }
+        topics = me?.followedTopics || [];
       } catch (e) { /* ignore bad token on public feed */ }
+    }
+    if (topics.length) {
+      const escaped = topics.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+      filter.requiredSkills = { $regex: `^(${escaped.join('|')})$`, $options: 'i' };
+    } else {
+      filter.requiredSkills = { $in: [] }; // no followed topics → empty feed
     }
   }
 
@@ -69,7 +78,8 @@ const getProjectPosts = asyncHandler(async (req, res) => {
     .sort({ createdAt: -1 })
     .limit(pageSize)
     .skip(pageSize * (page - 1))
-    .populate('creator', 'firstName lastName university verificationStatus avatarUrl');
+    .populate('creator', 'firstName lastName university verificationStatus avatarUrl')
+    .populate('team', 'firstName lastName avatarUrl');
 
   res.json({ posts, page, pages: Math.ceil(count / pageSize) });
 });
@@ -122,4 +132,14 @@ const togglePin = asyncHandler(async (req, res) => {
   res.json({ pinnedProjects: user.pinnedProjects });
 });
 
-module.exports = { createProjectPost, getProjectPosts, getFilterOptions, updateProgress, togglePin };
+// @desc    Get single project (public detail page)
+// @route   GET /api/projects/:id
+const getProjectById = asyncHandler(async (req, res) => {
+  const post = await ProjectPost.findById(req.params.id)
+    .populate('creator', 'firstName lastName university verificationStatus avatarUrl')
+    .populate('team', 'firstName lastName avatarUrl');
+  if (!post || post.status === 'hidden') { res.status(404); throw new Error('Project not found'); }
+  res.json(post);
+});
+
+module.exports = { createProjectPost, getProjectPosts, getFilterOptions, updateProgress, togglePin,getProjectById };

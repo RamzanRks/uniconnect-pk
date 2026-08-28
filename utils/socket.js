@@ -1,7 +1,6 @@
 let io = null;
 const onlineUsers = new Set();
 
-// REAL-TIME ENGINE: Socket.io with JWT authentication + presence tracking
 const initSocket = (httpServer) => {
   const { Server } = require('socket.io');
   const jwt = require('jsonwebtoken');
@@ -13,7 +12,6 @@ const initSocket = (httpServer) => {
     },
   });
 
-  // SECURITY: only authenticated users may open a socket
   io.use((socket, next) => {
     try {
       const token = socket.handshake.auth?.token;
@@ -28,10 +26,21 @@ const initSocket = (httpServer) => {
 
   io.on('connection', (socket) => {
     socket.join(`user:${socket.userId}`);
-
-    // NEW (Milestone 4): mark online + broadcast presence
     onlineUsers.add(String(socket.userId));
     io.emit('presence', { userId: socket.userId, online: true });
+
+    // Join conversation rooms for DM typing & live messages
+    socket.on('join_conversation', (convoId) => {
+      socket.join(`convo:${convoId}`);
+    });
+    socket.on('leave_conversation', (convoId) => {
+      socket.leave(`convo:${convoId}`);
+    });
+
+    // Typing indicator
+    socket.on('typing', ({ convoId, isTyping }) => {
+      socket.to(`convo:${convoId}`).emit('user_typing', { userId: socket.userId, convoId, isTyping });
+    });
 
     socket.on('disconnect', () => {
       onlineUsers.delete(String(socket.userId));
@@ -42,7 +51,6 @@ const initSocket = (httpServer) => {
   return io;
 };
 
-// Push a persistent notification to one user (saved in DB + emitted live)
 const notifyUser = async (recipientId, type, text, link = '/') => {
   try {
     const Notification = require('../models/Notification');
@@ -54,12 +62,10 @@ const notifyUser = async (recipientId, type, text, link = '/') => {
   }
 };
 
-// Emit any custom event to one user's room (used by DMs)
 const emitToUser = (userId, event, payload) => {
   if (io) io.to(`user:${userId}`).emit(event, payload);
 };
 
-// NEW (Milestone 4): presence helpers
 const isOnline = (userId) => onlineUsers.has(String(userId));
 const getOnlineUsers = () => Array.from(onlineUsers);
 

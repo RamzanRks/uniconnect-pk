@@ -67,12 +67,25 @@ const updateApplicationStatus = asyncHandler(async (req, res) => {
 
   application.status = status;
   await application.save();
-    await notifyUser(
+   await notifyUser(
     application.applicant,
     status === 'accepted' ? 'application_accepted' : 'application_rejected',
     `Your application for "${application.project.title}" was ${status}.`,
     '/'
   );
+
+  // If accepted, add to project team + award points
+  if (status === 'accepted') {
+    const project = await ProjectPost.findById(application.project);
+    if (project && !project.team.some((id) => id.toString() === application.applicant.toString())) {
+      project.team.push(application.applicant);
+      await project.save();
+    }
+    
+    const { awardPoints } = require('../utils/points');
+    await awardPoints(application.applicant, 10);
+  }
+
   res.json(application);
 });
 

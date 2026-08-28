@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { userAPI, ratingAPI, SERVER_URL } from '../services/api';
+import { userAPI, ratingAPI, endorsementAPI, SERVER_URL } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import ReportModal from '../components/ReportModal';
 import FollowListModal from '../components/FollowListModal';
@@ -13,34 +13,42 @@ const PublicProfilePage = () => {
   const [data, setData] = useState(null);
   const [activity, setActivity] = useState([]);
   const [ratingsData, setRatingsData] = useState(null);
+  const [endo, setEndo] = useState({ counts: [], mine: [] });
   const [followList, setFollowList] = useState(null);
   const [showReport, setShowReport] = useState(false);
   const [rating, setRating] = useState(null);
 
-  useEffect(() => {
-    userAPI.getProfile(id)
-      .then(({ data }) => setData(data))
-      .catch(() => setData(null));
+  const load = () => {
+    userAPI.getProfile(id).then(({ data }) => setData(data)).catch(() => setData(null));
     userAPI.getActivity(id).then(({ data }) => setActivity(data)).catch(() => {});
     ratingAPI.getUser(id).then(({ data }) => setRatingsData(data)).catch(() => {});
-  }, [id]);
+    endorsementAPI.get(id).then(({ data }) => setEndo(data)).catch(() => {});
+  };
+
+  useEffect(() => { load(); }, [id]);
 
   if (!data) return <p className="text-center p-10 text-gray-500">Loading profile...</p>;
 
   const u = data.user;
   const isMe = user && user._id === u._id;
   const iFollow = user && (user.following || []).some((f) => (f._id || f).toString() === u._id.toString());
+  const endoCounts = Object.fromEntries((endo.counts || []).map((c) => [c._id, c.count]));
 
   const toggleFollow = async () => {
     try {
       if (iFollow) await userAPI.unfollow(u._id);
       else await userAPI.follow(u._id);
       await refreshUser();
-      const { data: fresh } = await userAPI.getProfile(id);
-      setData(fresh);
-    } catch (e) {
-      alert(e.response?.data?.message || 'Action failed');
-    }
+      load();
+    } catch (e) { alert(e.response?.data?.message || 'Action failed'); }
+  };
+
+  const toggleEndorse = async (skill) => {
+    try {
+      await endorsementAPI.toggle({ endorseeId: u._id, skill });
+      const { data } = await endorsementAPI.get(u._id);
+      setEndo(data);
+    } catch (e) { alert(e.response?.data?.message || 'Failed'); }
   };
 
   const avatarSrc = u.avatarUrl
@@ -67,7 +75,11 @@ const PublicProfilePage = () => {
               <PresenceDot userId={u._id} />
             </h1>
             {u.username && <p className="text-sm text-blue-600 font-medium">@{u.username}</p>}
-            <p className="text-sm text-gray-600 mt-1">🎓 {u.university} • {u.major}</p>
+            <p className="text-sm text-gray-600 mt-1">
+              🎓{' '}
+              <Link to={`/hub/${encodeURIComponent(u.university)}`} className="text-blue-600 hover:underline">{u.university}</Link>
+              {' '}• {u.major} • 🪙 {u.points} pts
+            </p>
             {u.location && <p className="text-sm text-gray-600">📍 {u.location}</p>}
 
             <div className="flex flex-wrap gap-2 mt-2">
@@ -84,22 +96,15 @@ const PublicProfilePage = () => {
                 <span className="font-bold">{(u.following || []).length}</span> Following
               </button>
               <span className="text-sm text-gray-500">👁️ {data.viewCount || 0} views</span>
-              {data.avgRating > 0 && (
-                <span className="text-sm text-gray-700">⭐ {data.avgRating} ({data.ratingCount})</span>
-              )}
+              {data.avgRating > 0 && <span className="text-sm text-gray-700">⭐ {data.avgRating} ({data.ratingCount})</span>}
             </div>
 
             {!isMe && (
               <div className="flex gap-2 mt-4">
-                <button
-                  onClick={toggleFollow}
-                  className={`text-sm px-4 py-2 rounded transition ${iFollow ? 'bg-gray-600 text-white hover:bg-gray-700' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
-                >
+                <button onClick={toggleFollow} className={`text-sm px-4 py-2 rounded transition ${iFollow ? 'bg-gray-600 text-white hover:bg-gray-700' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
                   {iFollow ? 'Unfollow' : '➕ Follow'}
                 </button>
-                <button onClick={() => setShowReport(true)} className="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded hover:bg-gray-200">
-                  🚩 Report
-                </button>
+                <button onClick={() => setShowReport(true)} className="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded hover:bg-gray-200">🚩 Report</button>
               </div>
             )}
           </div>
@@ -115,10 +120,25 @@ const PublicProfilePage = () => {
 
         {u.bio && <p className="mt-5 text-gray-700">{u.bio}</p>}
 
+        {/* Skills with endorsements */}
         <div className="mt-4 flex flex-wrap gap-2">
-          {(u.skills || []).map((s, i) => (
-            <span key={i} className="bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded font-medium">{s}</span>
-          ))}
+          {(u.skills || []).map((s, i) => {
+            const c = endoCounts[s] || 0;
+            const mine = (endo.mine || []).includes(s);
+            return (
+              <button
+                key={i}
+                disabled={isMe}
+                onClick={() => toggleEndorse(s)}
+                title={isMe ? 'Your skill' : mine ? 'Endorsed by you — click to remove' : 'Click to endorse'}
+                className={`text-xs px-2 py-1 rounded font-medium border transition ${
+                  mine ? 'bg-purple-600 text-white border-purple-600' : 'bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100'
+                } ${isMe ? 'cursor-default' : ''}`}
+              >
+                {s} {c > 0 && `(${c})`}
+              </button>
+            );
+          })}
         </div>
 
         {(u.education || []).length > 0 && (
@@ -133,7 +153,6 @@ const PublicProfilePage = () => {
         )}
       </div>
 
-      {/* Pinned projects */}
       {(data.pinnedProjects || []).length > 0 && (
         <div className="bg-white rounded-xl shadow p-6 mt-6">
           <h3 className="font-semibold text-gray-800 mb-3">📍 Pinned Projects</h3>
@@ -146,7 +165,6 @@ const PublicProfilePage = () => {
         </div>
       )}
 
-      {/* Activity feed */}
       {activity.length > 0 && (
         <div className="bg-white rounded-xl shadow p-6 mt-6">
           <h3 className="font-semibold text-gray-800 mb-3">📊 Activity</h3>
@@ -159,7 +177,6 @@ const PublicProfilePage = () => {
         </div>
       )}
 
-      {/* Ratings received */}
       {ratingsData && ratingsData.count > 0 && (
         <div className="bg-white rounded-xl shadow p-6 mt-6">
           <h3 className="font-semibold text-gray-800 mb-3">⭐ Ratings ({ratingsData.count}) — {ratingsData.avg}/5</h3>
@@ -172,7 +189,6 @@ const PublicProfilePage = () => {
         </div>
       )}
 
-      {/* Their public projects */}
       {data.projects.length > 0 && (
         <div className="bg-white rounded-xl shadow p-6 mt-6">
           <h3 className="font-semibold text-gray-800 mb-3">📌 Projects</h3>
@@ -184,9 +200,7 @@ const PublicProfilePage = () => {
                   <p className="text-xs text-gray-500">{p.requiredSkills.join(', ')} • <span className="capitalize">{p.progress}</span></p>
                 </div>
                 {!isMe && (
-                  <button onClick={() => setRating({ ratee: u._id, project: p._id })} className="text-xs bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600">
-                    ⭐ Rate
-                  </button>
+                  <button onClick={() => setRating({ ratee: u._id, project: p._id })} className="text-xs bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600">⭐ Rate</button>
                 )}
               </div>
             </div>
@@ -194,7 +208,6 @@ const PublicProfilePage = () => {
         </div>
       )}
 
-      {/* Their questions */}
       {data.questions.length > 0 && (
         <div className="bg-white rounded-xl shadow p-6 mt-6">
           <h3 className="font-semibold text-gray-800 mb-3">💡 Questions</h3>
@@ -207,18 +220,10 @@ const PublicProfilePage = () => {
       )}
 
       {showReport && (
-        <ReportModal
-          showArea
-          onSubmit={(payload) => userAPI.report(u._id, payload)}
-          onClose={() => setShowReport(false)}
-        />
+        <ReportModal showArea onSubmit={(payload) => userAPI.report(u._id, payload)} onClose={() => setShowReport(false)} />
       )}
-      {followList && (
-        <FollowListModal ownerId={u._id} mode={followList} onClose={() => setFollowList(null)} />
-      )}
-      {rating && (
-        <RatingModal ratee={rating.ratee} project={rating.project} onClose={() => setRating(null)} />
-      )}
+      {followList && <FollowListModal ownerId={u._id} mode={followList} onClose={() => setFollowList(null)} />}
+      {rating && <RatingModal ratee={rating.ratee} project={rating.project} onClose={() => setRating(null)} />}
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { reactionAPI } from '../services/api';
 
-const EMOJIS = ['👍', '❤️', '🎉', ''];
+const EMOJIS = ['👍', '❤️', '🎉', '', '🔥'];
 
 const ReactionBar = ({ type, id }) => {
   const [counts, setCounts] = useState({});

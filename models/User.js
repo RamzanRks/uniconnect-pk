@@ -31,7 +31,10 @@ const userSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       trim: true,
-      match: [/\.edu(\.pk)?$/i, 'Please use a valid university .edu or .edu.pk email address'],
+      validate: {
+        validator: (v) => (process.env.TEST_MODE === 'true' ? true : /\.edu(\.pk)?$/i.test(v)),
+        message: 'Please use a valid university .edu or .edu.pk email address',
+      },
     },
 
     password: { type: String, required: true, minlength: [8, 'Password must be at least 8 characters'], select: false },
@@ -62,13 +65,21 @@ const userSchema = new mongoose.Schema(
 
     followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-
-    // NEW (Milestone 4): topic following + pinned projects
     followedTopics: [{ type: String, trim: true }],
     pinnedProjects: [{ type: mongoose.Schema.Types.ObjectId, ref: 'ProjectPost' }],
 
+        blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+
+        
     role: { type: String, enum: ['student', 'admin'], default: 'student' },
     verificationStatus: { type: String, enum: ['unverified', 'pending', 'verified'], default: 'unverified' },
+
+    // NEW (Milestone 5): reputation + email verification
+    points: { type: Number, default: 0 },
+    emailVerified: { type: Boolean, default: false },
+    verificationCode: { type: String, default: null },
+    verificationCodeExpires: { type: Date, default: null },
+    googleId: { type: String, default: null },
 
     // Anti-Troll System
     strikes: { type: Number, default: 0 },
@@ -80,7 +91,6 @@ const userSchema = new mongoose.Schema(
 // PERFORMANCE: database indexes for fast searching
 userSchema.index({ university: 1, major: 1 });
 userSchema.index({ skills: 1 });
-userSchema.index({ username: 1 });
 
 // SECURITY: Hash password before saving (Mongoose 8 async style)
 userSchema.pre('save', async function () {

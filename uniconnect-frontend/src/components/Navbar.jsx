@@ -10,6 +10,7 @@ const Navbar = () => {
   const { notifications, unread, markAllRead } = useNotifications();
   const { dark, toggle } = useTheme();
   const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -17,18 +18,42 @@ const Navbar = () => {
     navigate('/login');
   };
 
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
   return (
     <nav className="bg-white shadow-md border-b border-gray-200 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16 items-center">
-          <Link to="/" className="text-xl font-bold text-blue-600">UniConnect PK</Link>
+        <div className="flex justify-between h-16 items-center gap-4">
+          <Link to="/" className="text-xl font-bold text-blue-600 flex-shrink-0">UniConnect PK</Link>
 
-          <div className="flex items-center gap-4">
+          {user && (
+            <form onSubmit={handleSearch} className="flex-1 max-w-md hidden md:flex">
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="🔍 Search users, projects..."
+                className="w-full bg-gray-100 border-none rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+              />
+            </form>
+          )}
+
+          <div className="flex items-center gap-3">
             {user ? (
               <>
-                <Link to="/" className="text-sm text-gray-600 hover:text-blue-600 transition font-medium">Projects</Link>
-                <Link to="/qa" className="text-sm text-gray-600 hover:text-blue-600 transition font-medium">Q&A</Link>
-                <Link to="/saved" className="text-sm text-gray-600 hover:text-blue-600 transition font-medium">★ Saved</Link>
+                <Link to="/" className="text-sm text-gray-600 hover:text-blue-600 transition font-medium hidden md:block">Projects</Link>
+                <Link to="/qa" className="text-sm text-gray-600 hover:text-blue-600 transition font-medium hidden md:block">Q&A</Link>
+                <Link to="/leaderboard" className="text-sm text-gray-600 hover:text-blue-600 transition font-medium hidden md:block">🏆</Link>
+                <Link to="/dashboard" className="text-sm text-gray-600 hover:text-blue-600 transition font-medium hidden md:block">📊</Link>
+                
+                <Link to="/inbox" className="relative text-xl text-gray-600 hover:text-blue-600 transition" title="Inbox">
+                  📥
+                </Link>
+
                 <Link to="/profile" className="text-sm text-gray-600 hover:text-blue-600 transition font-medium">
                   {user.avatarUrl ? (
                     <img
@@ -41,12 +66,10 @@ const Navbar = () => {
                   )}
                 </Link>
 
-                {/* 🌙 Dark mode toggle */}
                 <button onClick={toggle} title="Toggle theme" className="text-xl hover:scale-110 transition">
                   {dark ? '☀️' : '🌙'}
                 </button>
 
-                {/* Notification Bell */}
                 <div className="relative">
                   <button onClick={() => setOpen(!open)} className="relative text-xl text-gray-600 hover:text-blue-600 transition">
                     🔔
@@ -77,12 +100,9 @@ const Navbar = () => {
                   )}
                 </div>
 
-                {user.verificationStatus === 'verified' && (
-                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full hidden sm:block">✅ Verified</span>
-                )}
                 {user.role === 'admin' && (
-                  <Link to="/admin" className="text-sm bg-red-600 text-white px-3 py-2 rounded-md hover:bg-red-700 transition font-medium">
-                    🛡️ Admin Panel
+                  <Link to="/admin" className="text-sm bg-red-600 text-white px-3 py-2 rounded-md hover:bg-red-700 transition font-medium hidden md:block">
+                    🛡️ Admin
                   </Link>
                 )}
                 <button onClick={handleLogout} className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-md transition">

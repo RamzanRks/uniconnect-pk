@@ -131,6 +131,10 @@ const reportUser = asyncHandler(async (req, res) => {
     targetArea: targetArea || 'other',
   });
 
+    const admins = await User.find({ role: 'admin' }).select('_id');
+  for (const a of admins) {
+    await notifyUser(a._id, 'warning', `🚩 New profile report (${reason}). Review in Admin Panel.`, '/admin');
+  }
   res.json({ message: 'Report submitted. Our moderation team will review it shortly.' });
 });
 
@@ -197,8 +201,34 @@ const getPresence = asyncHandler(async (req, res) => {
   res.json(result);
 });
 
+// @desc    Explore people to connect with
+// @route   GET /api/users/explore
+const getExplore = asyncHandler(async (req, res) => {
+  const users = await User.find({ _id: { $ne: req.user._id }, isBanned: false })
+    .select('firstName lastName username avatarUrl university points')
+    .sort({ createdAt: -1 })
+    .limit(10);
+  res.json(users);
+});
+
+// @desc    Block / unblock a user
+// @route   POST /api/users/:id/block  |  /unblock
+const blockUser = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id);
+  if (!user.blockedUsers.some((id) => id.toString() === req.params.id)) user.blockedUsers.push(req.params.id);
+  await user.save();
+  res.json({ message: 'User blocked. They can no longer message you.' });
+});
+
+const unblockUser = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id);
+  user.blockedUsers = user.blockedUsers.filter((id) => id.toString() !== req.params.id);
+  await user.save();
+  res.json({ message: 'User unblocked.' });
+});
+
 module.exports = {
   checkUsername, getPublicProfile, followUser, unfollowUser,
   removeFollower, getFollowers, getFollowing, reportUser,
-  getActivity, getMyProfileViews, toggleTopic, getPopularTopics, getPresence,
-};
+  getActivity, getMyProfileViews, toggleTopic, getPopularTopics, getPresence, getExplore,blockUser, unblockUser,
+}; 

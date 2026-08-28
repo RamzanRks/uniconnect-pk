@@ -6,7 +6,6 @@ const User = require('../models/User');
 const Application = require('../models/Application');
 const { notifyUser } = require('../utils/socket');
 
-
 // @desc    Get all pending reports (bulletproof version)
 // @route   GET /api/admin/reports
 const getPendingReports = asyncHandler(async (req, res) => {
@@ -29,8 +28,7 @@ const getPendingReports = asyncHandler(async (req, res) => {
       } else if (r.targetType === 'QA_Post') {
         const q = await Question.findById(r.targetId)
           .populate('author', 'firstName lastName email university');
-      
-              if (q) {
+        if (q) {
           targetInfo = { _id: q._id, title: q.title, body: q.content, creator: q.author, type: 'Question' };
         }
       } else if (r.targetType === 'User') {
@@ -39,10 +37,8 @@ const getPendingReports = asyncHandler(async (req, res) => {
           targetInfo = { _id: u._id, title: `${u.firstName} ${u.lastName}'s profile`, body: `Reported area: ${r.targetArea || 'profile'}`, creator: null, type: 'User' };
         }
       }
-      
-
     } catch (e) {
-      console.error('?? Skipped a broken report target:', e.message);
+      console.error('⚠️ Skipped a broken report target:', e.message);
     }
 
     enriched.push({ ...r.toObject(), targetInfo });
@@ -80,6 +76,7 @@ const banUser = asyncHandler(async (req, res) => {
   await user.save();
   await ProjectPost.updateMany({ creator: user._id }, { status: 'hidden' });
   await Question.updateMany({ author: user._id }, { status: 'hidden' });
+  await notifyUser(user._id, 'strike', 'Your account has been banned for violating community guidelines.', '/');
   res.json({ message: 'User banned and all their content hidden.' });
 });
 
@@ -100,7 +97,7 @@ const approveVerification = asyncHandler(async (req, res) => {
   }
   user.verificationStatus = 'verified';
   await user.save();
-    await notifyUser(user._id, 'verification_approved', 'Your student ID was approved. You are now a ✅ Verified Student!', '/profile');
+  await notifyUser(user._id, 'verification_approved', 'Your student ID was approved. You are now a ✅ Verified Student!', '/profile');
   res.json({ message: 'User verified successfully.' });
 });
 
@@ -115,8 +112,7 @@ const rejectVerification = asyncHandler(async (req, res) => {
   user.verificationStatus = 'unverified';
   user.idCardUrl = undefined;
   await user.save();
-  
-    await notifyUser(user._id, 'verification_rejected', 'Your verification request was rejected. Please upload a clearer ID card.', '/profile');
+  await notifyUser(user._id, 'verification_rejected', 'Your verification request was rejected. Please upload a clearer ID card.', '/profile');
   res.json({ message: 'Verification rejected.' });
 });
 
@@ -219,7 +215,7 @@ const getList = asyncHandler(async (req, res) => {
 // @desc    Pending name-change requests
 // @route   GET /api/admin/name-changes
 const getNameChanges = asyncHandler(async (req, res) => {
-    const users = await User.find({ 'nameChangeRequest.firstName': { $exists: true, $ne: null } }).select('-password');
+  const users = await User.find({ 'nameChangeRequest.firstName': { $exists: true, $ne: null } }).select('-password');
   res.json(users);
 });
 
@@ -227,7 +223,7 @@ const getNameChanges = asyncHandler(async (req, res) => {
 // @route   PUT /api/admin/name-changes/:id/approve
 const approveNameChange = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id);
-   if (!user || !user.nameChangeRequest?.firstName) { res.status(404); throw new Error('No pending name change'); }
+  if (!user || !user.nameChangeRequest?.firstName) { res.status(404); throw new Error('No pending name change'); }
   user.firstName = user.nameChangeRequest.firstName;
   user.lastName = user.nameChangeRequest.lastName;
   user.nameChangeRequest = undefined;
@@ -240,11 +236,55 @@ const approveNameChange = asyncHandler(async (req, res) => {
 // @route   PUT /api/admin/name-changes/:id/reject
 const rejectNameChange = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id);
-   if (!user || !user.nameChangeRequest?.firstName) { res.status(404); throw new Error('No pending name change'); }
+  if (!user || !user.nameChangeRequest?.firstName) { res.status(404); throw new Error('No pending name change'); }
   user.nameChangeRequest = undefined;
   await user.save();
   await notifyUser(user._id, 'name_change_rejected', 'Your name change request was rejected.', '/profile');
   res.json({ message: 'Name change rejected.' });
+});
+
+// NEW (Milestone 5): Strike Center
+// @desc    Add a strike to a user (3 strikes = auto-ban)
+// @route   PUT /api/admin/users/:id/strike
+const addStrike = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.params.id);
+  if (!user) { res.status(404); throw new Error('User not found'); }
+  user.strikes += 1;
+  if (user.strikes >= 3) user.isBanned = true;
+  await user.save();
+  await notifyUser(user._id, 'strike', `You received a strike (${user.strikes}/3). ${user.strikes >= 3 ? 'You are now banned.' : 'Please follow community guidelines.'}`, '/');
+  res.json({ message: `Strike added. Total: ${user.strikes}` });
+});
+
+// @desc    Remove a strike from a user
+// @route   PUT /api/admin/users/:id/unstrike
+const removeStrike = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.params.id);
+  if (!user) { res.status(404); throw new Error('User not found'); }
+  if (user.strikes > 0) user.strikes -= 1;
+  await user.save();
+  res.json({ message: `Strike removed. Total: ${user.strikes}` });
+});
+
+// @desc    Unban a user (reset strikes)
+// @route   PUT /api/admin/users/:id/unban
+const unbanUser = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.params.id);
+  if (!user) { res.status(404); throw new Error('User not found'); }
+  user.isBanned = false;
+  user.strikes = 0;
+  await user.save();
+  res.json({ message: 'User unbanned and strikes reset.' });
+});
+
+// @desc    Send a warning message to a user
+// @route   POST /api/admin/users/:id/warn
+const warnUser = asyncHandler(async (req, res) => {
+  const { message } = req.body;
+  const user = await User.findById(req.params.id);
+  if (!user) { res.status(404); throw new Error('User not found'); }
+  await notifyUser(user._id, 'warning', `Admin Warning: ${message}`, '/');
+  res.json({ message: 'Warning sent.' });
 });
 
 module.exports = {
@@ -259,4 +299,8 @@ module.exports = {
   getNameChanges,
   approveNameChange,
   rejectNameChange,
+  addStrike,
+  removeStrike,
+  unbanUser,
+  warnUser,
 };

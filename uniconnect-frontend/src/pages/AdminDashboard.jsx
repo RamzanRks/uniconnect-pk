@@ -41,13 +41,14 @@ const AdminDashboard = () => {
   const [verifications, setVerifications] = useState([]);
   const [nameChanges, setNameChanges] = useState([]);
   const [stats, setStats] = useState(null);
+  const [users, setUsers] = useState([]);
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
 
   const fetchData = useCallback(async () => {
     try {
-            const [rep, ver, st, nc] = await Promise.all([
+      const [rep, ver, st, nc] = await Promise.all([
         adminAPI.getPendingReports(),
         adminAPI.getPendingVerifications(),
         adminAPI.getStats(),
@@ -64,9 +65,13 @@ const AdminDashboard = () => {
     }
   }, []);
 
+  useEffect(() => { fetchData(); }, [fetchData]);
+
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (tab === 'users' && users.length === 0) {
+      adminAPI.getList('users').then(({ data }) => setUsers(data)).catch(() => {});
+    }
+  }, [tab]);
 
   const refresh = async () => {
     await fetchData();
@@ -75,6 +80,9 @@ const AdminDashboard = () => {
         const { data } = await adminAPI.getList(detail.type);
         setDetail((d) => ({ ...d, data }));
       } catch (e) { /* ignore */ }
+    }
+    if (tab === 'users') {
+      adminAPI.getList('users').then(({ data }) => setUsers(data)).catch(() => {});
     }
   };
 
@@ -91,64 +99,56 @@ const AdminDashboard = () => {
 
   const handleDeletePost = async (postId) => {
     if (!window.confirm('Delete this post permanently?')) return;
-    try {
-      await adminAPI.deletePost(postId);
-      setMessage('✅ Post deleted.');
-      refresh();
-    } catch (err) {
-      setMessage('❌ ' + (err.response?.data?.message || 'Failed to delete'));
-    }
+    try { await adminAPI.deletePost(postId); setMessage('✅ Post deleted.'); refresh(); } 
+    catch (err) { setMessage('❌ ' + (err.response?.data?.message || 'Failed to delete')); }
   };
 
   const handleBanUser = async (userId) => {
     if (!window.confirm('Ban this user permanently?')) return;
-    try {
-      await adminAPI.banUser(userId);
-      setMessage('✅ User banned.');
-      refresh();
-    } catch (err) {
-      setMessage('❌ ' + (err.response?.data?.message || 'Failed to ban'));
-    }
+    try { await adminAPI.banUser(userId); setMessage('✅ User banned.'); refresh(); } 
+    catch (err) { setMessage('❌ ' + (err.response?.data?.message || 'Failed to ban')); }
+  };
+
+  const handleStrike = async (id) => {
+    try { await adminAPI.addStrike(id); setMessage('✅ Strike added.'); refresh(); }
+    catch (err) { setMessage('❌ ' + (err.response?.data?.message || 'Failed')); }
+  };
+
+  const handleUnstrike = async (id) => {
+    try { await adminAPI.removeStrike(id); setMessage('✅ Strike removed.'); refresh(); }
+    catch (err) { setMessage('❌ ' + (err.response?.data?.message || 'Failed')); }
+  };
+
+  const handleUnban = async (id) => {
+    try { await adminAPI.unbanUser(id); setMessage('✅ User unbanned.'); refresh(); }
+    catch (err) { setMessage('❌ ' + (err.response?.data?.message || 'Failed')); }
+  };
+
+  const handleWarn = async (id) => {
+    const msg = window.prompt('Enter warning message:');
+    if (!msg) return;
+    try { await adminAPI.warnUser(id, msg); setMessage('✅ Warning sent.'); refresh(); }
+    catch (err) { setMessage('❌ ' + (err.response?.data?.message || 'Failed')); }
   };
 
   const handleApprove = async (id) => {
-    try {
-      await adminAPI.approveVerification(id);
-      setMessage('✅ User verified.');
-      refresh();
-    } catch (err) {
-      setMessage('❌ ' + (err.response?.data?.message || 'Failed'));
-    }
+    try { await adminAPI.approveVerification(id); setMessage('✅ User verified.'); refresh(); } 
+    catch (err) { setMessage('❌ ' + (err.response?.data?.message || 'Failed')); }
   };
 
   const handleReject = async (id) => {
-    try {
-      await adminAPI.rejectVerification(id);
-      setMessage('❌ Verification rejected.');
-      refresh();
-    } catch (err) {
-      setMessage('❌ ' + (err.response?.data?.message || 'Failed'));
-    }
+    try { await adminAPI.rejectVerification(id); setMessage('❌ Verification rejected.'); refresh(); } 
+    catch (err) { setMessage('❌ ' + (err.response?.data?.message || 'Failed')); }
   };
 
-    const handleApproveName = async (id) => {
-    try {
-      await adminAPI.approveNameChange(id);
-      setMessage('✅ Name change approved.');
-      refresh();
-    } catch (err) {
-      setMessage('❌ ' + (err.response?.data?.message || 'Failed'));
-    }
+  const handleApproveName = async (id) => {
+    try { await adminAPI.approveNameChange(id); setMessage('✅ Name change approved.'); refresh(); } 
+    catch (err) { setMessage('❌ ' + (err.response?.data?.message || 'Failed')); }
   };
 
   const handleRejectName = async (id) => {
-    try {
-      await adminAPI.rejectNameChange(id);
-      setMessage('❌ Name change rejected.');
-      refresh();
-    } catch (err) {
-      setMessage('❌ ' + (err.response?.data?.message || 'Failed'));
-    }
+    try { await adminAPI.rejectNameChange(id); setMessage('❌ Name change rejected.'); refresh(); } 
+    catch (err) { setMessage('❌ ' + (err.response?.data?.message || 'Failed')); }
   };
 
   const t = stats?.totals;
@@ -215,8 +215,7 @@ const AdminDashboard = () => {
             <td className="px-4 py-3">{r.status}</td>
           </tr>
         ));
-      default:
-        return null;
+      default: return null;
     }
   };
 
@@ -226,15 +225,10 @@ const AdminDashboard = () => {
       <p className="text-sm text-gray-500 mb-6">Moderate content, verify students, and monitor platform health.</p>
 
       <div className="flex gap-2 mb-6 flex-wrap">
-        <button onClick={() => { setTab('reports'); setDetail(null); }} className={`px-4 py-2 rounded text-sm font-medium transition ${tab === 'reports' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-          🚩 Reports ({reports.length})
-        </button>
-        <button onClick={() => { setTab('verifications'); setDetail(null); }} className={`px-4 py-2 rounded text-sm font-medium transition ${tab === 'verifications' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-          🪪 Verifications ({verifications.length})
-        </button>
-        <button onClick={() => { setTab('analytics'); setDetail(null); }} className={`px-4 py-2 rounded text-sm font-medium transition ${tab === 'analytics' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-          📊 Analytics
-        </button>
+        <button onClick={() => { setTab('reports'); setDetail(null); }} className={`px-4 py-2 rounded text-sm font-medium transition ${tab === 'reports' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>🚩 Reports ({reports.length})</button>
+        <button onClick={() => { setTab('verifications'); setDetail(null); }} className={`px-4 py-2 rounded text-sm font-medium transition ${tab === 'verifications' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>🪪 Verifications ({verifications.length})</button>
+        <button onClick={() => { setTab('users'); setDetail(null); }} className={`px-4 py-2 rounded text-sm font-medium transition ${tab === 'users' ? 'bg-yellow-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>🛡️ Strike Center</button>
+        <button onClick={() => { setTab('analytics'); setDetail(null); }} className={`px-4 py-2 rounded text-sm font-medium transition ${tab === 'analytics' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>📊 Analytics</button>
       </div>
 
       {message && <div className="bg-blue-50 text-blue-800 p-3 rounded text-sm mb-4">{message}</div>}
@@ -252,7 +246,7 @@ const AdminDashboard = () => {
                   <div>
                     <span className="bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">{r.reason}</span>
                     <span className="ml-2 bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded">
-                      {r.targetInfo?.type === 'Question' ? '💡 Q&A Post' : '📌 Project Post'}
+                      {r.targetInfo?.type === 'Question' ? '💡 Q&A Post' : r.targetInfo?.type === 'User' ? '👤 User Profile' : '📌 Project Post'}
                     </span>
                     <p className="text-xs text-gray-400 mt-2">Reported by {r.reporter?.firstName} {r.reporter?.lastName}</p>
                   </div>
@@ -264,70 +258,121 @@ const AdminDashboard = () => {
                     <p className="text-xs text-gray-500 mt-1">Author: {r.targetInfo.creator.firstName} {r.targetInfo.creator.lastName} • {r.targetInfo.creator.university}</p>
                   )}
                 </div>
-                               <div className="mt-4 flex gap-3">
+                <div className="mt-4 flex gap-3 flex-wrap">
                   {r.targetInfo && r.targetInfo.type !== 'User' && (
                     <button onClick={() => handleDeletePost(r.targetInfo._id)} className="bg-red-600 text-white text-sm px-4 py-2 rounded hover:bg-red-700 transition">🗑️ Delete Post</button>
                   )}
-                  {r.targetInfo?.type === 'User' && (
-                    <button onClick={() => handleBanUser(r.targetInfo._id)} className="bg-gray-800 text-white text-sm px-4 py-2 rounded hover:bg-black transition">⛔ Ban User</button>
-                  )}
                   {r.targetInfo?.creator && (
-                    <button onClick={() => handleBanUser(r.targetInfo.creator._id)} className="bg-gray-800 text-white text-sm px-4 py-2 rounded hover:bg-black transition">⛔ Ban User</button>
+                    <>
+                      <button onClick={() => handleStrike(r.targetInfo.creator._id)} className="bg-orange-600 text-white text-sm px-4 py-2 rounded hover:bg-orange-700 transition">⚠️ Strike User</button>
+                      <button onClick={() => handleBanUser(r.targetInfo.creator._id)} className="bg-gray-800 text-white text-sm px-4 py-2 rounded hover:bg-black transition">⛔ Ban User</button>
+                    </>
+                  )}
+                  {r.targetInfo?.type === 'User' && (
+                    <>
+                      <button onClick={() => handleStrike(r.targetInfo._id)} className="bg-orange-600 text-white text-sm px-4 py-2 rounded hover:bg-orange-700 transition">⚠️ Strike User</button>
+                      <button onClick={() => handleBanUser(r.targetInfo._id)} className="bg-gray-800 text-white text-sm px-4 py-2 rounded hover:bg-black transition">⛔ Ban User</button>
+                    </>
                   )}
                 </div>
               </div>
             ))}
           </div>
         )
-          ) : tab === 'verifications' ? (
+      ) : tab === 'verifications' ? (
         <div className="space-y-6">
-        {nameChanges.length > 0 && (
-          <div className="grid gap-4">
-            <h3 className="font-semibold text-gray-800">📝 Name Change Requests</h3>
-            {nameChanges.map((u) => (
-              <div key={u._id} className="bg-white p-5 rounded-lg shadow border-l-4 border-purple-500 flex justify-between items-center">
-                <div>
-                  <p className="text-sm text-gray-600">Current: <span className="font-semibold">{u.firstName} {u.lastName}</span></p>
-                  <p className="text-sm text-gray-800 mt-1">Requested: <span className="font-semibold text-purple-700">{u.nameChangeRequest?.firstName} {u.nameChangeRequest?.lastName}</span></p>
-                  <p className="text-xs text-gray-400 mt-1">{u.email}</p>
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={() => handleApproveName(u._id)} className="bg-green-600 text-white text-xs px-3 py-2 rounded hover:bg-green-700">✅ Approve</button>
-                  <button onClick={() => handleRejectName(u._id)} className="bg-red-600 text-white text-xs px-3 py-2 rounded hover:bg-red-700">❌ Reject</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        {verifications.length === 0 ? (
-          <p className="text-gray-500 text-center">No pending verifications.</p>
-        ) : (
-          <div className="grid gap-6">
-            {verifications.map((u) => (
-              <div key={u._id} className="bg-white p-6 rounded-lg shadow border-l-4 border-blue-500">
-                <div className="flex justify-between items-start">
+          {nameChanges.length > 0 && (
+            <div className="grid gap-4">
+              <h3 className="font-semibold text-gray-800">📝 Name Change Requests</h3>
+              {nameChanges.map((u) => (
+                <div key={u._id} className="bg-white p-5 rounded-lg shadow border-l-4 border-purple-500 flex justify-between items-center">
                   <div>
-                    <p className="font-semibold text-gray-900">{u.firstName} {u.lastName}</p>
-                    <p className="text-xs text-gray-500">{u.email}</p>
-                    <p className="text-xs text-gray-500 mt-1">🎓 {u.university} • {u.major}</p>
+                    <p className="text-sm text-gray-600">Current: <span className="font-semibold">{u.firstName} {u.lastName}</span></p>
+                    <p className="text-sm text-gray-800 mt-1">Requested: <span className="font-semibold text-purple-700">{u.nameChangeRequest?.firstName} {u.nameChangeRequest?.lastName}</span></p>
+                    <p className="text-xs text-gray-400 mt-1">{u.email}</p>
                   </div>
-                  <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">⏳ Pending</span>
-                </div>
-                {u.idCardUrl && (
-                  <div className="mt-4">
-                    <a href={u.idCardUrl?.startsWith('http') ? u.idCardUrl : `${SERVER_URL}${u.idCardUrl}`} target="_blank" rel="noreferrer">
-                      <img src={u.idCardUrl?.startsWith('http') ? u.idCardUrl : `${SERVER_URL}${u.idCardUrl}`} alt="Student ID" className="h-40 rounded border border-gray-200 hover:opacity-80 transition" />
-                    </a>
+                  <div className="flex gap-2">
+                    <button onClick={() => handleApproveName(u._id)} className="bg-green-600 text-white text-xs px-3 py-2 rounded hover:bg-green-700">✅ Approve</button>
+                    <button onClick={() => handleRejectName(u._id)} className="bg-red-600 text-white text-xs px-3 py-2 rounded hover:bg-red-700">❌ Reject</button>
                   </div>
-                )}
-                <div className="mt-4 flex gap-3">
-                  <button onClick={() => handleApprove(u._id)} className="bg-green-600 text-white text-sm px-4 py-2 rounded hover:bg-green-700 transition">✅ Approve</button>
-                  <button onClick={() => handleReject(u._id)} className="bg-red-600 text-white text-sm px-4 py-2 rounded hover:bg-red-700 transition">❌ Reject</button>
                 </div>
-              </div>
-                      ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+          {verifications.length === 0 ? (
+            <p className="text-gray-500 text-center">No pending verifications.</p>
+          ) : (
+            <div className="grid gap-6">
+              {verifications.map((u) => (
+                <div key={u._id} className="bg-white p-6 rounded-lg shadow border-l-4 border-blue-500">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-semibold text-gray-900">{u.firstName} {u.lastName}</p>
+                      <p className="text-xs text-gray-500">{u.email}</p>
+                      <p className="text-xs text-gray-500 mt-1">🎓 {u.university} • {u.major}</p>
+                    </div>
+                    <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">⏳ Pending</span>
+                  </div>
+                  {u.idCardUrl && (
+                    <div className="mt-4">
+                      <a href={u.idCardUrl?.startsWith('http') ? u.idCardUrl : `${SERVER_URL}${u.idCardUrl}`} target="_blank" rel="noreferrer">
+                        <img src={u.idCardUrl?.startsWith('http') ? u.idCardUrl : `${SERVER_URL}${u.idCardUrl}`} alt="Student ID" className="h-40 rounded border border-gray-200 hover:opacity-80 transition" />
+                      </a>
+                    </div>
+                  )}
+                  <div className="mt-4 flex gap-3">
+                    <button onClick={() => handleApprove(u._id)} className="bg-green-600 text-white text-sm px-4 py-2 rounded hover:bg-green-700 transition">✅ Approve</button>
+                    <button onClick={() => handleReject(u._id)} className="bg-red-600 text-white text-sm px-4 py-2 rounded hover:bg-red-700 transition">❌ Reject</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : tab === 'users' ? (
+        <div className="bg-white rounded-lg shadow overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-gray-50 text-gray-600 uppercase text-xs">
+              <tr>
+                <th className="px-4 py-2">User</th>
+                <th className="px-4 py-2">University</th>
+                <th className="px-4 py-2">Strikes</th>
+                <th className="px-4 py-2">Status</th>
+                <th className="px-4 py-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {users.length === 0 ? (
+                <tr><td colSpan={5} className="px-4 py-6 text-center text-gray-400">Loading users...</td></tr>
+              ) : users.map((u) => (
+                <tr key={u._id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 font-medium text-gray-900">{u.firstName} {u.lastName} {u.role === 'admin' && '🛡️'}</td>
+                  <td className="px-4 py-3 text-gray-500">{u.university}</td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 rounded-full text-xs ${u.strikes > 0 ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}`}>
+                      {u.strikes}/3
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">{u.isBanned ? <span className="text-red-600 font-bold">⛔ Banned</span> : '✅ Active'}</td>
+                  <td className="px-4 py-3 flex gap-2 flex-wrap">
+                    {u.role !== 'admin' && !u.isBanned && (
+                      <>
+                        <button onClick={() => handleStrike(u._id)} className="text-xs bg-orange-600 text-white px-2 py-1 rounded hover:bg-orange-700">+ Strike</button>
+                        <button onClick={() => handleWarn(u._id)} className="text-xs bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600">⚠️ Warn</button>
+                        <button onClick={() => handleBanUser(u._id)} className="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700">Ban</button>
+                      </>
+                    )}
+                    {u.isBanned && (
+                      <button onClick={() => handleUnban(u._id)} className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700">✅ Unban</button>
+                    )}
+                    {u.strikes > 0 && !u.isBanned && (
+                      <button onClick={() => handleUnstrike(u._id)} className="text-xs bg-gray-600 text-white px-2 py-1 rounded hover:bg-gray-700">- Strike</button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       ) : !t ? (
         <p className="text-gray-500 text-center">No analytics data.</p>
@@ -358,9 +403,7 @@ const AdminDashboard = () => {
                   <tbody className="divide-y divide-gray-100">
                     {detail.data.length === 0 ? (
                       <tr><td colSpan={detail.headers.length} className="px-4 py-6 text-center text-gray-400">Empty list.</td></tr>
-                    ) : (
-                      renderRows()
-                    )}
+                    ) : renderRows()}
                   </tbody>
                 </table>
               </div>

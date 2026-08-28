@@ -18,13 +18,8 @@ connectDB();
 
 const app = express();
 
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: 'cross-origin' },
-}));
-app.use(cors({
-  origin: (process.env.FRONTEND_URL || 'http://localhost:5173').split(','),
-  credentials: true
-}));
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+app.use(cors({ origin: (process.env.FRONTEND_URL || 'http://localhost:5173').split(','), credentials: true }));
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -34,8 +29,6 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 app.use(express.json({ limit: '10kb' }));
-
-// Serve uploaded ID card / avatar images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use('/api/auth', require('./routes/authRoutes'));
@@ -49,8 +42,13 @@ app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/bookmarks', require('./routes/bookmarkRoutes'));
 app.use('/api/ratings', require('./routes/ratingRoutes'));
 app.use('/api/reactions', require('./routes/reactionRoutes'));
+app.use('/api/endorsements', require('./routes/endorsementRoutes'));
+app.use('/api/announcements', require('./routes/announcementRoutes'));
+app.use('/api/search', require('./routes/searchRoutes'));
+app.use('/api/leaderboard', require('./routes/leaderboardRoutes'));
+app.use('/api/hubs', require('./routes/hubRoutes'));
+app.use('/api/dashboard', require('./routes/dashboardRoutes'));
 
-// Production: serve the built React app (single-origin)
 if (process.env.NODE_ENV === 'production') {
   const distPath = path.join(__dirname, 'uniconnect-frontend', 'dist');
   if (fs.existsSync(distPath)) {

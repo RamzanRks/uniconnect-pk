@@ -5,17 +5,34 @@ const ProjectPost = require('../models/ProjectPost');
 const Application = require('../models/Application');
 const { notifyUser } = require('../utils/socket');
 
-// @desc    Rate a teammate (only completed-project teammates or owner)
+// @desc    Rate a project's team (anyone EXCEPT owner/teammates can rate)
 // @route   POST /api/ratings
 const createRating = asyncHandler(async (req, res) => {
   const { ratee, project, stars, comment } = req.body;
   const p = await ProjectPost.findById(project);
   if (!p) { res.status(404); throw new Error('Project not found'); }
 
-  const isOwner = p.creator.toString() === req.user._id.toString();
-  const isTeammate = await Application.findOne({ project: p._id, applicant: req.user._id, status: 'accepted' });
-  if (!isOwner && !isTeammate) { res.status(403); throw new Error('Only project teammates can rate.'); }
-  if (ratee === req.user._id.toString()) { res.status(400); throw new Error('You cannot rate yourself.'); }
+  if (String(ratee) === String(req.user._id)) {
+    res.status(400);
+    throw new Error('You cannot rate yourself.');
+  }
+
+  // Build the project's participant list: owner + accepted teammates
+  const participants = [String(p.creator)];
+  const accepted = await Application.find({ project: p._id, status: 'accepted' }).select('applicant');
+  accepted.forEach((a) => participants.push(String(a.applicant)));
+
+  // The RATER must NOT be a participant (outsiders rate the team)
+  if (participants.includes(String(req.user._id))) {
+    res.status(403);
+    throw new Error('Project owners and teammates cannot rate their own project.');
+  }
+
+  // The RATEE must BE a participant (you can only rate someone who worked on it)
+  if (!participants.includes(String(ratee))) {
+    res.status(400);
+    throw new Error('You can only rate someone who is part of this project.');
+  }
 
   const rating = await Rating.findOneAndUpdate(
     { rater: req.user._id, ratee, project: p._id },
@@ -24,6 +41,12 @@ const createRating = asyncHandler(async (req, res) => {
   );
 
   await notifyUser(ratee, 'rating', `${req.user.firstName} ${req.user.lastName} rated you ${stars}⭐`, `/user/${req.user._id}`);
+  
+  // Award points based on stars (10 points for 5 stars, less for lower)
+  const { awardPoints } = require('../utils/points');
+  const pointsMap = { 1: 2, 2: 4, 3: 6, 4: 8, 5: 10 };
+  await awardPoints(ratee, pointsMap[stars] || 0);
+
   res.json(rating);
 });
 

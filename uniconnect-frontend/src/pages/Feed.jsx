@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { projectAPI, presenceAPI } from '../services/api';
+import { projectAPI, presenceAPI, announcementAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import CreateProjectModal from '../components/CreateProjectModal';
 import ReportModal from '../components/ReportModal';
@@ -14,6 +14,10 @@ const Feed = () => {
   const [posts, setPosts] = useState([]);
   const [presence, setPresence] = useState({});
   const [tab, setTab] = useState('all');
+  const [announcements, setAnnouncements] = useState([]);
+  const [showAnnForm, setShowAnnForm] = useState(false);
+  const [annTitle, setAnnTitle] = useState('');
+  const [annBody, setAnnBody] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [reportPostId, setReportPostId] = useState(null);
   const [applyPostId, setApplyPostId] = useState(null);
@@ -24,12 +28,10 @@ const Feed = () => {
   const [filters, setFilters] = useState({ search: '', skill: 'all', university: 'all' });
 
   useEffect(() => {
-    projectAPI.getFilterOptions()
-      .then(({ data }) => setOptions(data))
-      .catch(() => {});
+    projectAPI.getFilterOptions().then(({ data }) => setOptions(data)).catch(() => {});
+    announcementAPI.get().then(({ data }) => setAnnouncements(data)).catch(() => {});
   }, []);
 
-  // Debounce search input (waits 400ms after typing stops)
   useEffect(() => {
     const t = setTimeout(() => {
       setFilters((f) => ({ ...f, search: searchInput.trim() }));
@@ -57,9 +59,7 @@ const Feed = () => {
     }
   }, [filters, tab]);
 
-  useEffect(() => {
-    fetchPosts();
-  }, [fetchPosts]);
+  useEffect(() => { fetchPosts(); }, [fetchPosts]);
 
   const clearFilters = () => {
     setSearchInput('');
@@ -67,66 +67,80 @@ const Feed = () => {
   };
 
   const isOwner = (post) => user && post.creator && user._id === post.creator._id;
+  const isAdmin = user && user.role === 'admin';
+  const latestAnn = announcements[0];
+
+  const createAnnouncement = async (e) => {
+    e.preventDefault();
+    try {
+      await announcementAPI.create({ title: annTitle, body: annBody });
+      const { data } = await announcementAPI.get();
+      setAnnouncements(data);
+      setAnnTitle(''); setAnnBody(''); setShowAnnForm(false);
+    } catch (err) { alert(err.response?.data?.message || 'Failed'); }
+  };
+
+  const deleteAnnouncement = async (id) => {
+    if (!window.confirm('Delete this announcement?')) return;
+    await announcementAPI.delete(id);
+    const { data } = await announcementAPI.get();
+    setAnnouncements(data);
+  };
 
   return (
     <div className="max-w-4xl mx-auto p-6">
+      {/* Announcements banner */}
+      {latestAnn && (
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-5 rounded-xl shadow mb-6">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-xs uppercase tracking-wide opacity-80">📢 Platform Announcement</p>
+              <h3 className="font-bold text-lg mt-1">{latestAnn.title}</h3>
+              <p className="text-sm mt-1 opacity-90">{latestAnn.body}</p>
+              <p className="text-xs mt-2 opacity-70">
+                By {latestAnn.author?.firstName} {latestAnn.author?.lastName} • {new Date(latestAnn.createdAt).toLocaleDateString()}
+              </p>
+            </div>
+            {isAdmin && (
+              <button onClick={() => deleteAnnouncement(latestAnn._id)} className="text-white opacity-70 hover:opacity-100 text-xl">&times;</button>
+            )}
+          </div>
+        </div>
+      )}
+      {isAdmin && (
+        <div className="mb-6">
+          <button onClick={() => setShowAnnForm(!showAnnForm)} className="text-xs bg-purple-600 text-white px-3 py-1.5 rounded hover:bg-purple-700">
+            📢 {showAnnForm ? 'Close' : 'New Announcement'}
+          </button>
+          {showAnnForm && (
+            <form onSubmit={createAnnouncement} className="mt-3 bg-white p-4 rounded-lg shadow space-y-3">
+              <input value={annTitle} onChange={(e) => setAnnTitle(e.target.value)} className="input-field" placeholder="Announcement title" required />
+              <textarea value={annBody} onChange={(e) => setAnnBody(e.target.value)} className="input-field" rows={2} placeholder="Announcement body" required />
+              <button type="submit" className="bg-blue-600 text-white text-sm px-4 py-2 rounded hover:bg-blue-700">Publish</button>
+            </form>
+          )}
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-6">
         <div className="flex gap-2">
-          <button
-            onClick={() => setTab('all')}
-            className={`px-4 py-2 rounded text-sm font-medium transition ${tab === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-          >
-            🌍 All Projects
-          </button>
-          <button
-            onClick={() => setTab('foryou')}
-            className={`px-4 py-2 rounded text-sm font-medium transition ${tab === 'foryou' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-          >
-            ✨ For You
-          </button>
+          <button onClick={() => setTab('all')} className={`px-4 py-2 rounded text-sm font-medium transition ${tab === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>🌍 All Projects</button>
+          <button onClick={() => setTab('foryou')} className={`px-4 py-2 rounded text-sm font-medium transition ${tab === 'foryou' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>✨ For You</button>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-        >
-          + Post Project
-        </button>
+        <button onClick={() => setShowModal(true)} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">+ Post Project</button>
       </div>
 
-      {/* Search & Filter Bar */}
       <div className="bg-white p-4 rounded-lg shadow mb-6 grid grid-cols-1 sm:grid-cols-4 gap-3">
-        <input
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          placeholder="🔍 Search projects..."
-          className="input-field"
-        />
-        <select
-          value={filters.skill}
-          onChange={(e) => setFilters({ ...filters, skill: e.target.value })}
-          className="input-field"
-        >
+        <input value={searchInput} onChange={(e) => setSearchInput(e.target.value)} placeholder="🔍 Search projects..." className="input-field" />
+        <select value={filters.skill} onChange={(e) => setFilters({ ...filters, skill: e.target.value })} className="input-field">
           <option value="all">All Skills</option>
-          {options.skills.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
+          {options.skills.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
-        <select
-          value={filters.university}
-          onChange={(e) => setFilters({ ...filters, university: e.target.value })}
-          className="input-field"
-        >
+        <select value={filters.university} onChange={(e) => setFilters({ ...filters, university: e.target.value })} className="input-field">
           <option value="all">All Universities</option>
-          {options.universities.map((u) => (
-            <option key={u} value={u}>{u}</option>
-          ))}
+          {options.universities.map((u) => <option key={u} value={u}>{u}</option>)}
         </select>
-        <button
-          onClick={clearFilters}
-          className="text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition"
-        >
-          Clear Filters
-        </button>
+        <button onClick={clearFilters} className="text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition">Clear Filters</button>
       </div>
 
       <div className="grid gap-6">
@@ -156,13 +170,7 @@ const Feed = () => {
                   <span className="bg-purple-100 text-purple-700 text-xs px-2 py-1 rounded-full capitalize">{post.progress}</span>
                   <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Open</span>
                   <BookmarkButton type="ProjectPost" id={post._id} />
-                  <button
-                    onClick={() => setReportPostId(post._id)}
-                    title="Report this post"
-                    className="text-gray-400 hover:text-red-600 transition text-lg"
-                  >
-                    🚩
-                  </button>
+                  <button onClick={() => setReportPostId(post._id)} title="Report this post" className="text-gray-400 hover:text-red-600 transition text-lg">🚩</button>
                 </div>
               </div>
 
@@ -170,32 +178,30 @@ const Feed = () => {
 
               <div className="mt-4 flex flex-wrap gap-2">
                 {post.requiredSkills.map((skill, idx) => (
-                  <span key={idx} className="bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded font-medium">
-                    {skill}
-                  </span>
+                  <span key={idx} className="bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded font-medium">{skill}</span>
                 ))}
               </div>
+
+              {/* Project Team */}
+              {post.team && post.team.length > 0 && (
+                <div className="mt-3 flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-gray-500 font-medium">👥 Team:</span>
+                  {post.team.map((m) => (
+                    <Link key={m._id} to={`/user/${m._id}`} className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded-full hover:bg-green-100 font-medium transition">
+                      {m.firstName} {m.lastName}
+                    </Link>
+                  ))}
+                </div>
+              )}
 
               <ReactionBar type="ProjectPost" id={post._id} />
 
               <div className="mt-4 flex justify-between items-center">
-                <p className="text-xs text-gray-400">
-                  Deadline: {new Date(post.deadline).toLocaleDateString()}
-                </p>
+                <p className="text-xs text-gray-400">Deadline: {new Date(post.deadline).toLocaleDateString()}</p>
                 {isOwner(post) ? (
-                  <button
-                    onClick={() => setApplicantsPostId(post._id)}
-                    className="text-xs bg-gray-800 text-white px-3 py-1.5 rounded hover:bg-black transition"
-                  >
-                    👥 View Applicants
-                  </button>
+                  <button onClick={() => setApplicantsPostId(post._id)} className="text-xs bg-gray-800 text-white px-3 py-1.5 rounded hover:bg-black transition">👥 View Applicants</button>
                 ) : (
-                  <button
-                    onClick={() => setApplyPostId(post._id)}
-                    className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 transition"
-                  >
-                    🤝 Apply to Join
-                  </button>
+                  <button onClick={() => setApplyPostId(post._id)} className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 transition">🤝 Apply to Join</button>
                 )}
               </div>
             </div>
@@ -203,29 +209,12 @@ const Feed = () => {
         )}
       </div>
 
-      {showModal && (
-        <CreateProjectModal onClose={() => setShowModal(false)} onCreated={fetchPosts} />
-      )}
+      {showModal && <CreateProjectModal onClose={() => setShowModal(false)} onCreated={fetchPosts} />}
       {reportPostId && (
-        <ReportModal
-          onSubmit={(data) => projectAPI.reportProject(reportPostId, data)}
-          onClose={() => setReportPostId(null)}
-          onReported={fetchPosts}
-        />
+        <ReportModal onSubmit={(data) => projectAPI.reportProject(reportPostId, data)} onClose={() => setReportPostId(null)} onReported={fetchPosts} />
       )}
-      {applyPostId && (
-        <ApplyModal
-          projectId={applyPostId}
-          onClose={() => setApplyPostId(null)}
-          onApplied={fetchPosts}
-        />
-      )}
-      {applicantsPostId && (
-        <ApplicantsModal
-          projectId={applicantsPostId}
-          onClose={() => setApplicantsPostId(null)}
-        />
-      )}
+      {applyPostId && <ApplyModal projectId={applyPostId} onClose={() => setApplyPostId(null)} onApplied={fetchPosts} />}
+      {applicantsPostId && <ApplicantsModal projectId={applicantsPostId} onClose={() => setApplicantsPostId(null)} />}
     </div>
   );
 };

@@ -30,6 +30,11 @@ const createQuestion = asyncHandler(async (req, res) => {
     tags: (tags || '').split(',').map((t) => t.trim()).filter(Boolean),
     author: req.user._id,
   });
+
+    // Award points for asking a question
+  const { awardPoints } = require('../utils/points');
+  await awardPoints(req.user._id, 5);
+
   res.status(201).json(question);
 });
 
@@ -59,11 +64,15 @@ const createAnswer = asyncHandler(async (req, res) => {
     throw new Error('Question not found');
   }
 
-  const answer = await Answer.create({
-    content,
+   const answer = await Answer.create({
     question: question._id,
     author: req.user._id,
+    content,
   });
+
+  // Award points for answering
+  const { awardPoints } = require('../utils/points');
+  await awardPoints(req.user._id, 5);
   
     if (question.author.toString() !== req.user._id.toString()) {
     await notifyUser(question.author, 'answer', `${req.user.firstName} ${req.user.lastName} answered your question "${question.title}"`, `/qa/${question._id}`);
@@ -122,6 +131,10 @@ const acceptAnswer = asyncHandler(async (req, res) => {
   await answer.save();
 
   await Question.findByIdAndUpdate(answer.question._id, { isResolved: true });
+  
+  // Award 15 points to the answer author
+  const { awardPoints } = require('../utils/points');
+  await awardPoints(answer.author, 15);
 
   res.json({ message: 'Answer marked as the accepted solution.' });
 });
