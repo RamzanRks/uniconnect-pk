@@ -2,34 +2,17 @@ const mongoose = require('mongoose');
 
 const reportSchema = new mongoose.Schema(
   {
-    targetType: { type: String, enum: ['ProjectPost', 'User', 'QA_Post'], required: true },
-    targetId: { type: mongoose.Schema.Types.ObjectId, required: true, refPath: 'targetType' },
-
-    // WHICH part is being reported (for profile reports)
-    targetArea: {
-      type: String,
-      enum: ['post', 'project', 'question', 'dp', 'profile_info', 'other'],
-      default: 'other',
-    },
-
+    targetType: { type: String, required: true }, // ProjectPost | QA_Post | User | Comment
+    targetId: { type: mongoose.Schema.Types.ObjectId, required: true },
     reporter: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-
-    reason: {
-      type: String,
-      enum: [
-        'Spam', 'Harassment', 'Bullying', 'Hate Speech', 'Sexual Content',
-        'Nudity', 'Violence', 'Threats', 'Fake Profile', 'Impersonation',
-        'Misinformation', 'Plagiarism', 'Copyright Violation', 'Fraud or Scam',
-        'Self-Harm', 'Drug Promotion', 'Privacy Violation', 'Inappropriate DP',
-        'Offensive Username', 'Other',
-      ],
-      required: true,
-    },
-    details: { type: String, maxlength: 500 },
-
-    status: { type: String, enum: ['pending', 'resolved'], default: 'pending' },
+    reason: { type: String, required: true },
+    details: { type: String, default: '' },
+    targetArea: { type: String, default: '' },
+    status: { type: String, enum: ['pending', 'resolved', 'dismissed'], default: 'pending' },
   },
   { timestamps: true }
 );
+
+reportSchema.index({ status: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Report', reportSchema);

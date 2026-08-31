@@ -15,6 +15,7 @@ const projectPostSchema = new mongoose.Schema(
     
     // NEW (Milestone 5): Visible team members
     team: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    screenshots: [{ type: String, default: [] }],
   },
   { timestamps: true }
 );

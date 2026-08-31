@@ -4,7 +4,7 @@ const { protect } = require('../middleware/authMiddleware');
 const {
   checkUsername, getPublicProfile, followUser, unfollowUser,
   removeFollower, getFollowers, getFollowing, reportUser,
-  getActivity, getMyProfileViews, toggleTopic, getPopularTopics, getPresence, getExplore,blockUser,unblockUser,
+  getActivity, getMyProfileViews, toggleTopic, getPopularTopics, getPresence, getExplore,blockUser,unblockUser, getPublicPortfolio, getAlumni
 } = require('../controllers/userController');
 
 router.get('/username/:username/available', checkUsername);
@@ -12,6 +12,7 @@ router.get('/topics/popular', getPopularTopics);
 router.post('/topics/:tag/toggle', protect, toggleTopic);
 router.get('/presence', protect, getPresence);
 router.get('/explore', protect, getExplore);
+router.get('/portfolio/:handle', protect, getPublicPortfolio);
 router.post('/:id/block', protect, blockUser);
 router.post('/:id/unblock', protect, unblockUser);
 router.get('/me/views', protect, getMyProfileViews);
@@ -25,5 +26,8 @@ router.post('/:id/report', protect, reportUser);
 router.get('/:id/activity', getActivity);
 
 router.get('/:id', protect, getPublicProfile);
+
+router.get('/alumni', protect, getAlumni);
+
 
 module.exports = router;

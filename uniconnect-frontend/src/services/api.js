@@ -28,7 +28,15 @@ export const authAPI = {
   requestNameChange: (data) => api.post('/auth/name-change', data),
   setAvatar: (formData) => api.post('/auth/avatar', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   removeAvatar: () => api.delete('/auth/avatar'),
+    setBanner: (formData) => api.post('/auth/banner', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   exportData: () => api.get('/auth/export'),
+
+    verifyTwoFA: (email, code) => api.post('/auth/verify-2fa', { email, code }),
+  getSessions: () => api.get('/auth/sessions'),
+  logoutOthers: () => api.post('/auth/logout-others'),
+    logoutSession: (sid) => api.post('/auth/logout-session', { sid }),
+  setTwoFA: (enabled) => api.put('/auth/2fa', { enabled }),
+    setNotifPrefs: (data) => api.put('/auth/notif-prefs', data),
 };
 
 export const projectAPI = {
@@ -39,6 +47,8 @@ export const projectAPI = {
   getProject: (id) => api.get(`/projects/${id}`),
   updateProgress: (id, progress) => api.put(`/projects/${id}/progress`, { progress }),
   togglePin: (id) => api.post(`/projects/${id}/pin`),
+    addScreenshot: (id, formData) => api.post(`/projects/${id}/screenshots`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  removeScreenshot: (id, url) => api.post(`/projects/${id}/screenshots/remove`, { url }),
 };
 
 export const qaAPI = {
@@ -59,6 +69,7 @@ export const applicationAPI = {
 
 export const adminAPI = {
   getPendingReports: () => api.get('/admin/reports'),
+    dismissReport: (id) => api.put(`/admin/reports/${id}/dismiss`),
   deletePost: (id) => api.delete(`/admin/projects/${id}`),
   banUser: (id) => api.put(`/admin/users/${id}/ban`),
   addStrike: (id) => api.put(`/admin/users/${id}/strike`),
@@ -87,6 +98,7 @@ export const userAPI = {
   getActivity: (id) => api.get(`/users/${id}/activity`),
   myViews: () => api.get('/users/me/views'),
   explore: () => api.get('/users/explore'),
+    portfolio: (handle) => api.get(`/users/portfolio/${handle}`),
     block: (id) => api.post(`/users/${id}/block`),
   unblock: (id) => api.post(`/users/${id}/unblock`),
 };
@@ -123,11 +135,51 @@ export const messagesAPI = {
   makeAdmin: (id, userId) => api.post(`/messages/conversation/${id}/make-admin`, { userId }),
 };
 
-export const searchAPI = { global: (q) => api.get(`/search?q=${encodeURIComponent(q)}`) };
+export const searchAPI = {
+  global: (q) => api.get(`/search?q=${encodeURIComponent(q)}`),
+  trending: () => api.get('/search/trending'),
+};
 export const leaderboardAPI = { getTop: () => api.get('/leaderboard'), getMyRank: () => api.get('/leaderboard/me') };
 export const hubAPI = { get: (university) => api.get(`/hubs/${encodeURIComponent(university)}`) };
 export const dashboardAPI = { get: () => api.get('/dashboard') };
 export const announcementAPI = { get: () => api.get('/announcements'), create: (data) => api.post('/announcements', data), delete: (id) => api.delete(`/announcements/${id}`) };
 export const endorsementAPI = { toggle: (data) => api.post('/endorsements', data), get: (userId) => api.get(`/endorsements/${userId}`) };
 
+export const commentAPI = {
+  get: (projectId) => api.get(`/comments/project/${projectId}`),
+  create: (projectId, data) => api.post(`/comments/project/${projectId}`, data),
+  vote: (id, value) => api.post(`/comments/${id}/vote`, { value }),
+  report: (id, data) => api.post(`/comments/${id}/report`, data),
+  delete: (id) => api.delete(`/comments/${id}`),
+};
+export const fileAPI = {
+  get: (projectId) => api.get(`/files/project/${projectId}`),
+  upload: (projectId, formData) => api.post(`/files/project/${projectId}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  delete: (id) => api.delete(`/files/${id}`),
+};
+export const certAPI = {
+  get: (userId) => api.get(`/certificates/user/${userId}`),
+  create: (formData) => api.post('/certificates', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  toggleFeatured: (id) => api.put(`/certificates/${id}/featured`),
+  delete: (id) => api.delete(`/certificates/${id}`),
+    update: (id, formData) => api.put(`/certificates/${id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+};
+
+export const pollAPI = {
+  get: (projectId) => api.get(`/polls/project/${projectId}`),
+  create: (projectId, data) => api.post(`/polls/project/${projectId}`, data),
+  vote: (id, optionIndex) => api.post(`/polls/${id}/vote`, { optionIndex }),
+  close: (id) => api.post(`/polls/${id}/close`),
+  delete: (id) => api.delete(`/polls/${id}`),
+};
+export const auditAPI = { get: (params) => api.get('/audit', { params }) };
+export const aiAPI = {
+  coach: () => api.get('/ai/coach'),
+  headlines: () => api.post('/ai/headlines'),
+  rewriteBio: (text) => api.post('/ai/rewrite-bio', { text }),
+  ask: (question) => api.post('/ai/ask', { question }),
+};
+export const alumniAPI = { list: (params) => api.get('/users/alumni', { params }) };
+
 export default api;
+

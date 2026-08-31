@@ -49,6 +49,12 @@ const AuthPage = ({ mode }) => {
     try {
       if (view === 'login') {
         const { data } = await authAPI.login({ email: formData.email, password: formData.password });
+        if (data.twoFA) {
+          setPendingEmail(data.email);
+          setView('two-fa');
+          setSuccess('🔐 New device detected! Check your email (or backend terminal) for the 6-digit login code.');
+          return;
+        }
         if (!data.emailVerified) {
           localStorage.setItem('token', data.token);
           setPendingEmail(data.email);
@@ -62,6 +68,10 @@ const AuthPage = ({ mode }) => {
         const { data } = await authAPI.register(payload);
         setPendingEmail(data.email);
         setView('verify-email');
+              } else if (view === 'two-fa') {
+        const { data } = await authAPI.verifyTwoFA(pendingEmail, code);
+        localStorage.setItem('token', data.token);
+        window.location.href = '/';
       } else if (view === 'verify-email') {
         await authAPI.verifyEmail(pendingEmail, code);
         switchView('login');
@@ -103,6 +113,7 @@ const AuthPage = ({ mode }) => {
           {view === 'login' && 'Welcome Back'}
           {view === 'register' && 'Join UniConnect'}
           {view === 'verify-email' && 'Verify Email'}
+                    {view === 'two-fa' && 'Verify Device'}
           {view === 'forgot' && (forgotStep === 1 ? 'Reset Password' : forgotStep === 2 ? 'Enter Code' : 'New Password')}
         </h2>
 
@@ -133,6 +144,13 @@ const AuthPage = ({ mode }) => {
             </>
           )}
 
+                    {view === 'two-fa' && (
+            <>
+              <p className="text-sm text-gray-600">We sent a login code to <strong>{pendingEmail}</strong> to verify this new device.</p>
+              <input placeholder="Enter 6-digit code" required className="input-field" value={code} onChange={(e) => setCode(e.target.value)} autoFocus />
+            </>
+          )}
+
           {view === 'verify-email' && (
             <>
               <p className="text-sm text-gray-600">We sent a 6-digit code to <strong>{pendingEmail}</strong> (valid 15 min).</p>
@@ -159,6 +177,7 @@ const AuthPage = ({ mode }) => {
           )}
 
           <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition">
+                        {view === 'two-fa' && 'Verify & Login'}
             {view === 'login' && 'Sign In'}
             {view === 'register' && 'Create Account'}
             {view === 'verify-email' && 'Verify Email'}

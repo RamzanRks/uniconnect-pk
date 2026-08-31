@@ -142,4 +142,26 @@ const getProjectById = asyncHandler(async (req, res) => {
   res.json(post);
 });
 
-module.exports = { createProjectPost, getProjectPosts, getFilterOptions, updateProgress, togglePin,getProjectById };
+// @desc    Add a project screenshot (max 3, owner only)
+const addScreenshot = asyncHandler(async (req, res) => {
+  const post = await ProjectPost.findById(req.params.id);
+  if (!post) { res.status(404); throw new Error('Project not found'); }
+  if (post.creator.toString() !== req.user._id.toString() && req.user.role !== 'admin') { res.status(403); throw new Error('Not authorized'); }
+  if ((post.screenshots || []).length >= 3) { res.status(400); throw new Error('Maximum 3 screenshots per project.'); }
+  if (!req.file) { res.status(400); throw new Error('No image uploaded'); }
+  const url = req.file.path && req.file.path.startsWith('http') ? req.file.path : `/uploads/${req.file.filename}`;
+  post.screenshots.push(url);
+  await post.save();
+  res.json(post);
+});
+
+// @desc    Remove a project screenshot
+const removeScreenshot = asyncHandler(async (req, res) => {
+  const post = await ProjectPost.findById(req.params.id);
+  if (!post) { res.status(404); throw new Error('Project not found'); }
+  if (post.creator.toString() !== req.user._id.toString() && req.user.role !== 'admin') { res.status(403); throw new Error('Not authorized'); }
+  post.screenshots = (post.screenshots || []).filter((s) => s !== req.body.url);
+  await post.save();
+  res.json(post);
+});
+module.exports = { createProjectPost, getProjectPosts, getFilterOptions, updateProgress, togglePin,getProjectById , addScreenshot, removeScreenshot};

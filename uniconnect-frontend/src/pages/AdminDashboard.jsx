@@ -1,5 +1,7 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+﻿import { EmptyState } from '../components/fx';
+import { useState, useEffect, useCallback } from 'react';
 import { adminAPI, SERVER_URL } from '../services/api';
+
 
 const BarChart = ({ data, color }) => {
   const max = Math.max(...data.map((d) => d.count), 1);
@@ -25,10 +27,7 @@ const BarChart = ({ data, color }) => {
 };
 
 const StatCard = ({ label, value, accent, onClick }) => (
-  <button
-    onClick={onClick}
-    className="bg-white rounded-lg shadow p-5 text-left hover:shadow-md hover:-translate-y-0.5 transition"
-  >
+  <button onClick={onClick} className="bg-white rounded-lg shadow p-5 text-left hover:shadow-md hover:-translate-y-0.5 transition">
     <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
     <p className={`text-3xl font-bold mt-1 ${accent || 'text-gray-900'}`}>{value}</p>
     <p className="text-[10px] text-gray-400 mt-1">Click to view full list →</p>
@@ -76,36 +75,26 @@ const AdminDashboard = () => {
   const refresh = async () => {
     await fetchData();
     if (detail) {
-      try {
-        const { data } = await adminAPI.getList(detail.type);
-        setDetail((d) => ({ ...d, data }));
-      } catch (e) { /* ignore */ }
+      try { const { data } = await adminAPI.getList(detail.type); setDetail((d) => ({ ...d, data })); } catch (e) { /* ignore */ }
     }
-    if (tab === 'users') {
-      adminAPI.getList('users').then(({ data }) => setUsers(data)).catch(() => {});
-    }
+    if (tab === 'users') adminAPI.getList('users').then(({ data }) => setUsers(data)).catch(() => {});
   };
 
   const openDetail = async (type, title, headers) => {
     setDetail({ type, title, headers, data: [] });
-    try {
-      const { data } = await adminAPI.getList(type);
-      setDetail({ type, title, headers, data });
-    } catch (e) {
-      setDetail(null);
-      setMessage('❌ Failed to load list');
-    }
+    try { const { data } = await adminAPI.getList(type); setDetail({ type, title, headers, data }); }
+    catch (e) { setDetail(null); setMessage('❌ Failed to load list'); }
   };
 
   const handleDeletePost = async (postId) => {
-    if (!window.confirm('Delete this post permanently?')) return;
-    try { await adminAPI.deletePost(postId); setMessage('✅ Post deleted.'); refresh(); } 
+    if (!window.confirm('Delete this permanently?')) return;
+    try { await adminAPI.deletePost(postId); setMessage('✅ Deleted & reports resolved.'); refresh(); }
     catch (err) { setMessage('❌ ' + (err.response?.data?.message || 'Failed to delete')); }
   };
 
   const handleBanUser = async (userId) => {
     if (!window.confirm('Ban this user permanently?')) return;
-    try { await adminAPI.banUser(userId); setMessage('✅ User banned.'); refresh(); } 
+    try { await adminAPI.banUser(userId); setMessage('✅ User banned.'); refresh(); }
     catch (err) { setMessage('❌ ' + (err.response?.data?.message || 'Failed to ban')); }
   };
 
@@ -131,23 +120,28 @@ const AdminDashboard = () => {
     catch (err) { setMessage('❌ ' + (err.response?.data?.message || 'Failed')); }
   };
 
+    const handleDismiss = async (id) => {
+    try { await adminAPI.dismissReport(id); setMessage('✅ Report dismissed as false.'); refresh(); }
+    catch (err) { setMessage('❌ ' + (err.response?.data?.message || 'Failed')); }
+  };
+
   const handleApprove = async (id) => {
-    try { await adminAPI.approveVerification(id); setMessage('✅ User verified.'); refresh(); } 
+    try { await adminAPI.approveVerification(id); setMessage('✅ User verified.'); refresh(); }
     catch (err) { setMessage('❌ ' + (err.response?.data?.message || 'Failed')); }
   };
 
   const handleReject = async (id) => {
-    try { await adminAPI.rejectVerification(id); setMessage('❌ Verification rejected.'); refresh(); } 
+    try { await adminAPI.rejectVerification(id); setMessage('❌ Verification rejected.'); refresh(); }
     catch (err) { setMessage('❌ ' + (err.response?.data?.message || 'Failed')); }
   };
 
   const handleApproveName = async (id) => {
-    try { await adminAPI.approveNameChange(id); setMessage('✅ Name change approved.'); refresh(); } 
+    try { await adminAPI.approveNameChange(id); setMessage('✅ Name change approved.'); refresh(); }
     catch (err) { setMessage('❌ ' + (err.response?.data?.message || 'Failed')); }
   };
 
   const handleRejectName = async (id) => {
-    try { await adminAPI.rejectNameChange(id); setMessage('❌ Name change rejected.'); refresh(); } 
+    try { await adminAPI.rejectNameChange(id); setMessage('❌ Name change rejected.'); refresh(); }
     catch (err) { setMessage('❌ ' + (err.response?.data?.message || 'Failed')); }
   };
 
@@ -167,7 +161,7 @@ const AdminDashboard = () => {
             <td className="px-4 py-3">{u.verificationStatus}</td>
             <td className="px-4 py-3">{u.isBanned ? '⛔ Banned' : '✅ Active'}</td>
             <td className="px-4 py-3">
-              {!u.isBanned && (
+              {!u.isBanned && u.role !== 'admin' && (
                 <button onClick={() => handleBanUser(u._id)} className="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700">Ban</button>
               )}
             </td>
@@ -237,7 +231,7 @@ const AdminDashboard = () => {
         <p className="text-gray-500 text-center">Loading...</p>
       ) : tab === 'reports' ? (
         reports.length === 0 ? (
-          <p className="text-gray-500 text-center">No pending reports. The community is clean! 🎉</p>
+          <EmptyState icon="🛡️" title="No pending reports" sub="The community is clean! 🎉" />
         ) : (
           <div className="grid gap-6">
             {reports.map((r) => (
@@ -246,18 +240,26 @@ const AdminDashboard = () => {
                   <div>
                     <span className="bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">{r.reason}</span>
                     <span className="ml-2 bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded">
-                      {r.targetInfo?.type === 'Question' ? '💡 Q&A Post' : r.targetInfo?.type === 'User' ? '👤 User Profile' : '📌 Project Post'}
+                      {r.targetInfo?.type === 'Question' ? '💡 Q&A Post' : r.targetInfo?.type === 'User' ? '👤 User Profile' : r.targetInfo?.type === 'Comment' ? '💬 Comment' : '📌 Project Post'}
                     </span>
                     <p className="text-xs text-gray-400 mt-2">Reported by {r.reporter?.firstName} {r.reporter?.lastName}</p>
                   </div>
                   <p className="text-xs text-gray-400">{new Date(r.createdAt).toLocaleString()}</p>
                 </div>
+
                 <div className="mt-4 bg-gray-50 p-4 rounded">
                   <p className="text-sm font-semibold text-gray-800">{r.targetInfo?.title || 'Post already removed'}</p>
+                  {r.targetInfo?.body && (
+                    <p className="text-sm text-gray-700 mt-2 whitespace-pre-line border-l-4 border-gray-200 pl-3">{r.targetInfo.body}</p>
+                  )}
                   {r.targetInfo?.creator && (
-                    <p className="text-xs text-gray-500 mt-1">Author: {r.targetInfo.creator.firstName} {r.targetInfo.creator.lastName} • {r.targetInfo.creator.university}</p>
+                    <p className="text-xs text-gray-500 mt-2">Author: {r.targetInfo.creator.firstName} {r.targetInfo.creator.lastName} • {r.targetInfo.creator.university}</p>
+                  )}
+                  {r.targetInfo?.link && (
+                    <a href={r.targetInfo.link} target="_blank" rel="noreferrer" className="inline-block text-xs text-blue-600 hover:underline mt-2">🔗 Open in app</a>
                   )}
                 </div>
+
                 <div className="mt-4 flex gap-3 flex-wrap">
                   {r.targetInfo && r.targetInfo.type !== 'User' && (
                     <button onClick={() => handleDeletePost(r.targetInfo._id)} className="bg-red-600 text-white text-sm px-4 py-2 rounded hover:bg-red-700 transition">🗑️ Delete Post</button>
@@ -274,6 +276,7 @@ const AdminDashboard = () => {
                       <button onClick={() => handleBanUser(r.targetInfo._id)} className="bg-gray-800 text-white text-sm px-4 py-2 rounded hover:bg-black transition">⛔ Ban User</button>
                     </>
                   )}
+                  <button onClick={() => handleDismiss(r._id)} className="bg-gray-200 text-gray-700 text-sm px-4 py-2 rounded hover:bg-gray-300 transition">🙈 Dismiss (False Report)</button>
                 </div>
               </div>
             ))}
@@ -349,9 +352,7 @@ const AdminDashboard = () => {
                   <td className="px-4 py-3 font-medium text-gray-900">{u.firstName} {u.lastName} {u.role === 'admin' && '🛡️'}</td>
                   <td className="px-4 py-3 text-gray-500">{u.university}</td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs ${u.strikes > 0 ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}`}>
-                      {u.strikes}/3
-                    </span>
+                    <span className={`px-2 py-1 rounded-full text-xs ${u.strikes > 0 ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}`}>{u.strikes}/3</span>
                   </td>
                   <td className="px-4 py-3">{u.isBanned ? <span className="text-red-600 font-bold">⛔ Banned</span> : '✅ Active'}</td>
                   <td className="px-4 py-3 flex gap-2 flex-wrap">

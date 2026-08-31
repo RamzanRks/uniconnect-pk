@@ -22,3 +22,7 @@
   border-color: #334155 !important;
 }
 .dark .shadow, .dark .shadow-md, .dark .shadow-lg { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6) !important; }
+
+@keyframes pageFade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.page-fade { animation: pageFade .4s ease; }
+.brand-gradient { background: linear-gradient(90deg, #2563eb, #7c3aed, #e11d48); -webkit-background-clip: text; background-clip: text; color: transparent; }

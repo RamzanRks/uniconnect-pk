@@ -43,11 +43,18 @@ app.use('/api/bookmarks', require('./routes/bookmarkRoutes'));
 app.use('/api/ratings', require('./routes/ratingRoutes'));
 app.use('/api/reactions', require('./routes/reactionRoutes'));
 app.use('/api/endorsements', require('./routes/endorsementRoutes'));
+app.use('/api/comments', require('./routes/commentRoutes'));
+app.use('/api/files', require('./routes/fileRoutes'));
+app.use('/api/certificates', require('./routes/certificateRoutes'));
 app.use('/api/announcements', require('./routes/announcementRoutes'));
 app.use('/api/search', require('./routes/searchRoutes'));
 app.use('/api/leaderboard', require('./routes/leaderboardRoutes'));
 app.use('/api/hubs', require('./routes/hubRoutes'));
 app.use('/api/dashboard', require('./routes/dashboardRoutes'));
+
+app.use('/api/polls', require('./routes/pollRoutes'));
+app.use('/api/audit', require('./routes/auditRoutes'));
+app.use('/api/ai', require('./routes/aiRoutes'));
 
 if (process.env.NODE_ENV === 'production') {
   const distPath = path.join(__dirname, 'uniconnect-frontend', 'dist');
@@ -61,6 +68,17 @@ app.use(notFound);
 app.use(globalErrorHandler);
 
 const server = http.createServer(app);
+
+// ⏰ Auto Weekly Digest (Runs every Monday at 9:00 AM)
+const cron = require('node-cron');
+const { spawn } = require('child_process');
+
+cron.schedule('0 9 * * 1', () => {
+  console.log('⏰ [CRON] Triggering weekly email digest...');
+  const digestPath = path.join(__dirname, 'digest.js');
+  const child = spawn('node', [digestPath], { stdio: 'inherit' });
+  child.on('exit', (code) => console.log(`✅ Digest finished with code ${code}`));
+}, { timezone: "Asia/Karachi" }); // Change timezone if needed!
 initSocket(server);
 
 const PORT = process.env.PORT || 5000;

@@ -4,10 +4,11 @@ const { protect, adminOnly } = require('../middleware/authMiddleware');
 const {
   getPendingReports, deletePost, banUser, getPendingVerifications, approveVerification, rejectVerification,
   getStats, getList, getNameChanges, approveNameChange, rejectNameChange,
-  addStrike, removeStrike, unbanUser, warnUser
+  addStrike, removeStrike, unbanUser, warnUser ,dismissReport
 } = require('../controllers/adminController');
 
 router.get('/reports', protect, adminOnly, getPendingReports);
+router.put('/reports/:id/dismiss', protect, adminOnly, dismissReport);
 router.delete('/projects/:id', protect, adminOnly, deletePost);
 router.put('/users/:id/ban', protect, adminOnly, banUser);
 router.put('/users/:id/strike', protect, adminOnly, addStrike);

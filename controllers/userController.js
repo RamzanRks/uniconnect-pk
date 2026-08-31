@@ -227,8 +227,52 @@ const unblockUser = asyncHandler(async (req, res) => {
   res.json({ message: 'User unblocked.' });
 });
 
+// @desc    Public portfolio by @username or id (with weekly views)
+// @route   GET /api/users/portfolio/:handle
+const getPublicPortfolio = asyncHandler(async (req, res) => {
+  const { handle } = req.params;
+  const isId = /^[a-f0-9]{24}$/.test(handle);
+  const user = isId ? await User.findById(handle) : await User.findOne({ username: String(handle).toLowerCase() });
+  if (!user || user.isBanned) { res.status(404); throw new Error('Profile not found'); }
+
+  const viewerId = req.user._id.toString();
+  const last = user.viewCooldown ? user.viewCooldown.get(viewerId) : null;
+  const COOLDOWN = 30 * 60 * 1000; // same visitor counts once per 30 min
+  if (!last || Date.now() - new Date(last).getTime() > COOLDOWN) {
+    user.viewCount = (user.viewCount || 0) + 1;
+    const monthAgo = new Date(Date.now() - 30 * 24 * 3600 * 1000);
+    user.viewLog = [...(user.viewLog || []).filter((d) => new Date(d) > monthAgo), new Date()].slice(-300);
+    if (!user.viewCooldown) user.viewCooldown = new Map();
+    if (user.viewCooldown.size > 500) user.viewCooldown.clear();
+    user.viewCooldown.set(viewerId, new Date());
+    console.log(`👀 Portfolio view counted: ${user.username || user.email} -> Total: ${user.viewCount}`);
+    await user.save();
+  }
+  const weekViews = user.viewLog.filter((d) => new Date(d) > new Date(Date.now() - 7 * 24 * 3600 * 1000)).length;
+
+  const [projects, questions] = await Promise.all([
+    ProjectPost.find({ creator: user._id, status: { $ne: 'hidden' } }).sort({ createdAt: -1 }).limit(6),
+    Question.find({ author: user._id, status: 'open' }).limit(5),
+  ]);
+
+  res.json({ user: user.toObject(), weekViews, projects, questions });
+});
+
+
+// @desc    Alumni directory (graduated filter)
+const getAlumni = asyncHandler(async (req, res) => {
+  const { uni, year } = req.query;
+  const q = { graduated: true, isBanned: false };
+  if (uni) q.university = uni;
+  if (year) q.graduationYear = Number(year);
+  const users = await User.find(q)
+    .select('firstName lastName avatarUrl username university graduationYear company points mentor openToRefer')
+    .sort({ points: -1 }).limit(50);
+  res.json(users);
+});
+
 module.exports = {
   checkUsername, getPublicProfile, followUser, unfollowUser,
   removeFollower, getFollowers, getFollowing, reportUser,
-  getActivity, getMyProfileViews, toggleTopic, getPopularTopics, getPresence, getExplore,blockUser, unblockUser,
+  getActivity, getMyProfileViews, toggleTopic, getPopularTopics, getPresence, getExplore,blockUser, unblockUser, getPublicPortfolio, getAlumni,
 }; 

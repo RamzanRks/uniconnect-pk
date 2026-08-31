@@ -29,7 +29,7 @@ const Navbar = () => {
     <nav className="bg-white shadow-md border-b border-gray-200 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center gap-4">
-          <Link to="/" className="text-xl font-bold text-blue-600 flex-shrink-0">UniConnect PK</Link>
+          <Link to="/" className="text-xl font-bold text-blue-600 flex-shrink-0"><span className="brand-gradient font-extrabold">UniConnect PK</span></Link>
 
           {user && (
             <form onSubmit={handleSearch} className="flex-1 max-w-md hidden md:flex">

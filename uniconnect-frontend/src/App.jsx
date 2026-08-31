@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate , useLocation} from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
@@ -18,7 +18,13 @@ import InboxPage from './pages/InboxPage';
 import CompleteProfilePage from './pages/CompleteProfilePage';
 import Navbar from './components/Navbar';
 import ProjectDetailPage from './pages/ProjectDetailPage';
-
+import PortfolioPage from './pages/PortfolioPage';
+import SoundListener from './components/SoundListener';
+import PWABanner from './components/PWABanner';
+import AlumniPage from './pages/AlumniPage';
+import OnboardingTour from './components/OnboardingTour';
+import ParticlesBackground from './components/ParticlesBackground';
+import AuditLogPage from './pages/AuditLogPage';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
@@ -27,6 +33,11 @@ const PrivateRoute = ({ children }) => {
   if (loading) return <div className="p-10 text-center">Loading...</div>;
   if (user && user.university === 'Not set') return <Navigate to="/complete-profile" />;
   return user ? children : <Navigate to="/login" />;
+};
+
+const PageFade = ({ children }) => {
+  const location = useLocation();
+  return <div key={location.pathname} className="page-fade">{children}</div>;
 };
 
 const AdminRoute = ({ children }) => {
@@ -42,7 +53,12 @@ const AppContent = () => (
         <NotificationProvider>
           <div className="min-h-screen bg-gray-50">
             <Navbar />
-            <Routes>
+            <ParticlesBackground color="#1000efffff" count={80}>
+            <SoundListener />
+<PWABanner />
+<OnboardingTour />
+<PageFade>
+  <Routes>
               <Route path="/login" element={<AuthPage mode="login" />} />
               <Route path="/register" element={<AuthPage mode="register" />} />
               <Route path="/" element={<PrivateRoute><Feed /></PrivateRoute>} />
@@ -58,7 +74,12 @@ const AppContent = () => (
                               <Route path="/complete-profile" element={<CompleteProfilePage />} />
               <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
   <Route path="/project/:id" element={<PrivateRoute><ProjectDetailPage /></PrivateRoute>} />
-            </Routes>
+                  <Route path="/portfolio/:handle" element={<PrivateRoute><PortfolioPage /></PrivateRoute>} />
+                                  <Route path="/alumni" element={<PrivateRoute><AlumniPage /></PrivateRoute>} />
+                                                  <Route path="/audit" element={<PrivateRoute><AuditLogPage /></PrivateRoute>} />
+            </Routes></PageFade>
+                        </ParticlesBackground>
+
           </div>
         </NotificationProvider>
       </Router>

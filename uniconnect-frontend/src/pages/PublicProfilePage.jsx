@@ -1,11 +1,12 @@
 ﻿import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { userAPI, ratingAPI, endorsementAPI, SERVER_URL } from '../services/api';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { userAPI, ratingAPI, endorsementAPI, messagesAPI, SERVER_URL } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import ReportModal from '../components/ReportModal';
 import FollowListModal from '../components/FollowListModal';
 import RatingModal from '../components/RatingModal';
 import PresenceDot from '../components/PresenceDot';
+import { Skeleton } from '../components/fx';
 
 const PublicProfilePage = () => {
   const { id } = useParams();
@@ -17,6 +18,7 @@ const PublicProfilePage = () => {
   const [followList, setFollowList] = useState(null);
   const [showReport, setShowReport] = useState(false);
   const [rating, setRating] = useState(null);
+    const navigate = useNavigate();
 
   const load = () => {
     userAPI.getProfile(id).then(({ data }) => setData(data)).catch(() => setData(null));
@@ -27,7 +29,13 @@ const PublicProfilePage = () => {
 
   useEffect(() => { load(); }, [id]);
 
-  if (!data) return <p className="text-center p-10 text-gray-500">Loading profile...</p>;
+  if (!data) return (
+    <div className="max-w-3xl mx-auto p-6 space-y-6">
+      <Skeleton className="h-64 w-full" />
+      <Skeleton className="h-40 w-full" />
+      <Skeleton className="h-40 w-full" />
+    </div>
+  );
 
   const u = data.user;
   const isMe = user && user._id === u._id;
@@ -49,6 +57,13 @@ const PublicProfilePage = () => {
       const { data } = await endorsementAPI.get(u._id);
       setEndo(data);
     } catch (e) { alert(e.response?.data?.message || 'Failed'); }
+  };
+
+    const startChat = async () => {
+    try {
+      const { data } = await messagesAPI.open({ recipientId: u._id });
+      navigate(`/inbox?c=${data._id}`);
+    } catch (e) { alert(e.response?.data?.message || 'Cannot start chat'); }
   };
 
   const avatarSrc = u.avatarUrl
@@ -105,6 +120,8 @@ const PublicProfilePage = () => {
                   {iFollow ? 'Unfollow' : '➕ Follow'}
                 </button>
                 <button onClick={() => setShowReport(true)} className="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded hover:bg-gray-200">🚩 Report</button>
+                <button onClick={startChat} className="text-sm bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">💬 Message</button>
+                <Link to={`/portfolio/${u.username || u._id}`} className="text-sm bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">🎨 Portfolio</Link>
               </div>
             )}
           </div>

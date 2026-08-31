@@ -1,5 +1,7 @@
 let io = null;
 const onlineUsers = new Set();
+const User = require('../models/User');
+const Notification = require('../models/Notification');
 
 const initSocket = (httpServer) => {
   const { Server } = require('socket.io');
@@ -51,14 +53,23 @@ const initSocket = (httpServer) => {
   return io;
 };
 
-const notifyUser = async (recipientId, type, text, link = '/') => {
+const PREF_MAP = { message: 'messages', reaction: 'reactions', comment: 'comments', follow: 'follows', application: 'applications' };
+const CRITICAL = ['system', 'warning', 'strike', 'verification_approved', 'verification_rejected', 'name_change_approved', 'name_change_rejected'];
+
+const notifyUser = async (userId, type, text, link) => {
   try {
-    const Notification = require('../models/Notification');
-    const doc = await Notification.create({ recipient: recipientId, type, text, link });
-    if (io) io.to(`user:${recipientId}`).emit('notification', doc);
-    return doc;
+    const target = await User.findById(userId);
+    if (!target) return null;
+    const prefs = target.notifPrefs || {};
+    const muted = target.muteAllUntil && new Date(target.muteAllUntil) > new Date();
+    if (muted && !CRITICAL.includes(type)) return null;
+    const key = PREF_MAP[type];
+    if (key && prefs[key] === false) return null;
+    const n = await Notification.create({ recipient: userId, type, text, link });
+    if (io) io.to(`user:${userId}`).emit('notification', n);
+    return n;
   } catch (e) {
-    console.error('notifyUser failed:', e.message);
+    return null;
   }
 };
 

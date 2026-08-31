@@ -8,6 +8,7 @@ const SearchPage = () => {
   const [tab, setTab] = useState('users');
   const [data, setData] = useState({ counts: { users: 0, projects: 0, questions: 0 }, users: [], projects: [], questions: [] });
   const [input, setInput] = useState(q);
+    const [trend, setTrend] = useState(null);
 
   useEffect(() => {
     if (q) {
@@ -15,6 +16,8 @@ const SearchPage = () => {
       setInput(q);
     }
   }, [q]);
+
+    useEffect(() => { searchAPI.trending().then(({ data }) => setTrend(data)).catch(() => {}); }, []);
 
   const submit = (e) => {
     e.preventDefault();
@@ -29,6 +32,24 @@ const SearchPage = () => {
         <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Search users, projects, questions..." className="input-field" />
         <button type="submit" className="bg-blue-600 text-white px-6 rounded hover:bg-blue-700">🔍 Search</button>
       </form>
+
+      {q && data.didYouMean && data.counts.users + data.counts.projects + data.counts.questions === 0 && (
+        <p className="text-sm text-gray-600 mb-4">
+          Did you mean{' '}
+          <button onClick={() => setSearchParams({ q: data.didYouMean })} className="text-blue-600 font-semibold hover:underline">{data.didYouMean}</button>?
+        </p>
+      )}
+
+      {!q && trend && (
+        <div className="bg-white p-5 rounded-lg shadow mb-6">
+          <h3 className="font-semibold text-gray-800 mb-3">🔥 Trending Searches</h3>
+          <div className="flex flex-wrap gap-2">
+            {trend.skills.map((s) => (
+              <button key={s._id} onClick={() => setSearchParams({ q: s._id })} className="bg-blue-50 text-blue-700 text-sm px-3 py-1 rounded-full hover:bg-blue-100">#{s._id} ({s.count})</button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {q && (
         <>

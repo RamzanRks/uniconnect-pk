@@ -4,6 +4,7 @@ import { io } from 'socket.io-client';
 import { messagesAPI, userAPI, presenceAPI, SERVER_URL } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import ReportModal from '../components/ReportModal';
+import { EmptyState } from '../components/fx';
 
 const EMOJIS = ['😀','😂','😍','👍','🙏','🔥','🎉','❤️','😢','😡','🤔','👀','','🥳','','🤝'];
 
@@ -322,7 +323,7 @@ const InboxPage = () => {
         <div className="flex-1 overflow-y-auto">
           {tab !== 'explore' ? (
             conversations.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center p-6">{tab === 'requests' ? 'No pending requests.' : tab === 'archived' ? 'No archived chats.' : 'No conversations yet. Explore people to start chatting!'}</p>
+              <EmptyState icon={tab === 'requests' ? '📥' : tab === 'archived' ? '📦' : '💬'} title={tab === 'requests' ? 'No pending requests' : tab === 'archived' ? 'No archived chats' : 'No conversations yet'} sub={tab === 'explore' ? '' : 'Explore people to start chatting!'} />
             ) : (
               conversations.map((c) => (
                 <button key={c._id} onClick={() => openChat(c._id)} className={`w-full text-left p-4 border-b border-gray-50 hover:bg-gray-50 flex gap-3 ${activeId === c._id ? 'bg-blue-50' : ''}`}>

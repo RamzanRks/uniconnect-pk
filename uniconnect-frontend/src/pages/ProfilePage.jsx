@@ -4,7 +4,16 @@ import { profileAPI, userAPI, authAPI, topicAPI, projectAPI, SERVER_URL } from '
 import AvatarCropModal from '../components/AvatarCropModal';
 import FollowListModal from '../components/FollowListModal';
 
+import ProfileEditorModal from '../components/ProfileEditorModal';
+import CertificateManager from '../components/CertificateManager';
+import NotificationPrefsCard from '../components/NotificationPrefsCard';
+
+import CoachCard from '../components/CoachCard';
+
+
 const ProfilePage = () => {
+  const [showProEditor, setShowProEditor] = useState(false);
+  const [showCerts, setShowCerts] = useState(false);
   const { user, refreshUser } = useAuth();
   const [showCrop, setShowCrop] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -19,6 +28,11 @@ const ProfilePage = () => {
   const [usernameStatus, setUsernameStatus] = useState('');
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
+
+    const [sessions, setSessions] = useState([]);
+  const [currentSid, setCurrentSid] = useState('');
+  const [twoFAEnabled, setTwoFAEnabled] = useState(true);
+  const [secLoading, setSecLoading] = useState(false);
 
   const [form, setForm] = useState({
     username: user?.username || '',
@@ -44,8 +58,16 @@ const ProfilePage = () => {
     topicAPI.popular().then(({ data }) => setTopics(data)).catch(() => {});
   };
 
-  useEffect(() => {
-    if (user) loadExtra();
+  
+    useEffect(() => {
+    if (user) {
+      loadExtra();
+      authAPI.getSessions().then(({ data }) => {
+        setSessions(data.sessions || []);
+        setCurrentSid(data.currentSid || '');
+        setTwoFAEnabled(data.twoFAEnabled !== false);
+      }).catch(() => {});
+    }
   }, [user?._id]);
 
   if (!user) return null;
@@ -170,6 +192,40 @@ const ProfilePage = () => {
     URL.revokeObjectURL(url);
   };
 
+    const handleToggle2FA = async () => {
+    setSecLoading(true);
+    try {
+      const { data } = await authAPI.setTwoFA(!twoFAEnabled);
+      setTwoFAEnabled(data.twoFAEnabled);
+      setMessage(`🔐 2FA ${data.twoFAEnabled ? 'enabled' : 'disabled'}.`);
+    } catch (err) { setError('Failed to update 2FA'); }
+    setSecLoading(false);
+  };
+
+  const handleLogoutOthers = async () => {
+    if (!window.confirm('Log out all other devices and clear trusted devices? You will stay logged in here.')) return;
+    setSecLoading(true);
+    try {
+      await authAPI.logoutOthers();
+      setMessage('✅ All other devices logged out.');
+      const { data } = await authAPI.getSessions();
+      setSessions(data.sessions || []);
+    } catch (err) { setError('Failed to logout others'); }
+    setSecLoading(false);
+  };
+
+    const handleLogoutSession = async (sid) => {
+    if (!window.confirm('Log out this device? If it is currently in use, the user will be signed out.')) return;
+    setSecLoading(true);
+    try {
+      await authAPI.logoutSession(sid);
+      setMessage('✅ Session logged out.');
+      const { data } = await authAPI.getSessions();
+      setSessions(data.sessions || []);
+    } catch (err) { setError('Failed to logout session'); }
+    setSecLoading(false);
+  };
+
   const badge =
     user.verificationStatus === 'verified'
       ? { text: '✅ Verified Student', cls: 'bg-green-100 text-green-800' }
@@ -220,7 +276,13 @@ const ProfilePage = () => {
               {avatarSrc && (
                 <button onClick={handleRemoveAvatar} className="text-xs bg-gray-100 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-200">🗑️ Remove</button>
               )}
-              <button onClick={() => setEditing(!editing)} className="text-xs bg-gray-100 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-200">✏️ Edit Profile</button>
+              {/* Old editor merged into 🎨 Pro Editor */}
+                <button onClick={() => setShowProEditor(true)} className="bg-purple-600 text-white text-sm px-4 py-2 rounded hover:bg-purple-700">🎨 Pro Editor</button>
+                <button onClick={() => setShowCerts(true)} className="bg-yellow-500 text-white text-sm px-4 py-2 rounded hover:bg-yellow-600">🏅 Certificates</button>
+                <button onClick={() => { window.location.href = `/portfolio/${user.username || user._id}`; }} className="bg-green-600 text-white text-sm px-4 py-2 rounded hover:bg-green-700">🎨 View Portfolio</button>
+                                <button onClick={() => { window.location.href = '/alumni'; }} className="bg-indigo-600 text-white text-sm px-4 py-2 rounded hover:bg-indigo-700">🎓 Alumni</button>
+                {showProEditor && <ProfileEditorModal onClose={() => setShowProEditor(false)} />}
+                {showCerts && <CertificateManager onClose={() => setShowCerts(false)} />}
               <button onClick={handleExport} className="text-xs bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700">📤 Export My Data</button>
             </div>
           </div>
@@ -368,7 +430,66 @@ const ProfilePage = () => {
         )}
       </div>
 
+
+
+
+
+
       {/* Verification Card */}
+
+
+
+            <NotificationPrefsCard />
+          <CoachCard />
+
+     
+
+            {/* Security Center */}
+      <div className="bg-white rounded-xl shadow p-8 mt-6">
+        
+        <h2 className="text-lg font-bold text-gray-800">🔒 Security Center</h2>
+
+        <p className="text-sm text-gray-500 mt-1">Manage your account security and active sessions.</p>
+        
+        <div className="flex justify-between items-center mt-4 p-4 bg-gray-50 rounded-lg">
+          <div>
+            <p className="font-medium text-gray-800">Two-Factor Authentication (2FA)</p>
+            <p className="text-xs text-gray-500">Require an email code when logging in from a new device.</p>
+          </div>
+          <button onClick={handleToggle2FA} disabled={secLoading} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${twoFAEnabled ? 'bg-blue-600' : 'bg-gray-300'}`}>
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${twoFAEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+          </button>
+        </div>
+
+        <div className="mt-6">
+          <div className="flex justify-between items-center mb-3">
+            <p className="font-medium text-gray-800">Active Sessions ({sessions.length})</p>
+            {sessions.length > 1 && (
+              <button onClick={handleLogoutOthers} disabled={secLoading} className="text-xs bg-red-100 text-red-700 px-3 py-1.5 rounded hover:bg-red-200 font-medium">
+                🚪 Logout all other devices
+              </button>
+            )}
+          </div>
+          <div className="space-y-2">
+            {sessions.map((s) => (
+              <div key={s.sid} className={`flex justify-between items-center p-3 rounded-lg border ${s.sid === currentSid ? 'border-green-300 bg-green-50' : 'border-gray-200'}`}>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-800 truncate">{s.device}</p>
+                  <p className="text-xs text-gray-500">IP: {s.ip || 'Unknown'} • {new Date(s.createdAt).toLocaleString()}</p>
+                </div>
+                {s.sid === currentSid ? (
+                  <span className="text-[10px] bg-green-600 text-white px-2 py-0.5 rounded-full font-bold whitespace-nowrap">CURRENT</span>
+                ) : (
+                  <button onClick={() => handleLogoutSession(s.sid)} disabled={secLoading} className="text-xs bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200 font-medium whitespace-nowrap ml-3">
+                    Logout
+                  </button>
+                )}
+              </div>
+            ))}
+            {sessions.length === 0 && <p className="text-sm text-gray-400 text-center">No active sessions found.</p>}
+          </div>
+        </div>
+      </div>
       <div className="bg-white rounded-xl shadow p-8 mt-6">
         <h2 className="text-lg font-bold text-gray-800">🪪 Student Verification</h2>
         {user.verificationStatus === 'unverified' && (
