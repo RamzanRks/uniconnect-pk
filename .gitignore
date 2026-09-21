@@ -7,3 +7,12 @@ uniconnect-frontend/.env
 uniconnect-frontend/node_modules/
 uniconnect-frontend/dist/
 *.log
+
+# Python
+__pycache__/
+*.pyc
+
+# Accidental/generated files
+output*.txt
+codes.indexOf(c)
+u.code)
