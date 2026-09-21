@@ -6,6 +6,7 @@ import RichText from '../components/RichText';
 import BrandIcon from '../components/BrandIcon';
 import CertificateTimeline from '../components/CertificateTimeline';
 import { Reveal, Tilt, Particles, Counter, Typewriter, Magnetic, Spotlight, Testimonials, QRCard, SkillBars, Skeleton, EmptyState } from '../components/fx';
+import { getPortfolioTokens } from '../utils/portfolioTheme';
 
 const Radar = ({ data, color }) => {
   const n = data.length;
@@ -91,10 +92,19 @@ const PortfolioPage = () => {
   const on = (k) => fx[k] !== false;
   const isMe = user && user._id === u._id;
   const iFollow = user && (user.following || []).some((f) => (f._id || f).toString() === u._id.toString());
-  const accent = u.accentColor || '#2563eb';
-  const accent2 = u.accent2 || '#a855f7';
+
+
   const theme = u.portfolioTheme || 'modern';
-  const dark = theme === 'dark' || theme === 'glass' || theme === 'gradient';
+const T = getPortfolioTokens(theme, u.accentColor || '#2563eb', u.accent2 || '#a855f7');
+const accent = T.accent;
+const accent2 = T.accent2;
+const dark = T.darkCard;
+const bg = T.pageBg;
+const card = T.cardClass;
+const cardStyle = { background: T.cardBg, borderColor: T.border };
+const txt = T.textClass;
+const sub = T.subClass;
+
   const sections = u.portfolioSections || {};
   const endoCounts = Object.fromEntries((endo.counts || []).map((c) => [c._id, c.count]));
   const radarData = (u.skills || []).slice(0, 6).map((s) => ({ label: s, value: (endoCounts[s] || 0) + 1 }));
@@ -106,17 +116,13 @@ const PortfolioPage = () => {
   const font = FONTS[u.portfolioFont] || FONTS.sans;
   const pattern = u.portfolioPattern || 'none';
 
-  const bg = theme === 'dark' ? '#000' : theme === 'glass' || theme === 'gradient' ? `linear-gradient(135deg, ${accent}, ${accent2})` : '#f3f4f6';
-  const card = theme === 'dark' ? 'bg-black/60 border border-yellow-500/20 backdrop-blur-xl' : theme === 'glass' ? 'bg-white/10 border border-white/20 backdrop-blur-xl' : theme === 'gradient' ? 'bg-white shadow-2xl' : 'bg-white shadow-lg';
-  const txt = theme === 'modern' ? 'text-gray-900' : 'text-white';
-  const sub = theme === 'modern' ? 'text-gray-500' : 'text-white/70';
 
   const GradWrap = ({ children }) => on('gradientBorders') ? (
     <div className="rounded-3xl p-[2px] anim-grad" style={{ backgroundImage: `linear-gradient(120deg, ${accent}, ${accent2}, ${accent})` }}>{children}</div>
   ) : children;
 
   const Card = ({ children, span = '', delay = 0 }) => {
-    const inner = <div className={`${card} rounded-3xl p-7 h-full transition hover:shadow-2xl`}>{children}</div>;
+    const inner = <div className={`${card} rounded-3xl p-7 h-full transition hover:shadow-2xl`} style={cardStyle}>{children}</div>;
     const tilted = on('tilt') ? <Tilt>{inner}</Tilt> : inner;
     return on('scrollReveal') ? <Reveal delay={delay} className={span}>{tilted}</Reveal> : <div className={span}>{tilted}</div>;
   };
@@ -176,7 +182,7 @@ const PortfolioPage = () => {
 
       {/* Sticky glass navbar */}
       {on('glassNav') && (
-        <div className={`sticky top-0 z-40 backdrop-blur-xl border-b ${dark ? 'bg-white/10 border-white/10' : 'bg-white/70 border-gray-200'}`}>
+        <div className={`sticky top-0 z-40 backdrop-blur-xl border-b ${T.navClass}`}>
           <div className="max-w-6xl mx-auto px-6 py-2.5 flex justify-between items-center">
             <div className="flex items-center gap-3">
               {u.avatarUrl ? <img src={u.avatarUrl.startsWith('http') ? u.avatarUrl : `${SERVER_URL}${u.avatarUrl}`} className="w-8 h-8 rounded-full object-cover" /> : <div className="w-8 h-8 rounded-full text-white flex items-center justify-center text-xs font-bold" style={{ background: accent }}>{u.firstName?.[0]}</div>}
@@ -186,7 +192,7 @@ const PortfolioPage = () => {
               </div>
             </div>
             <div className="flex gap-2">
-              {!isMe && <button onClick={toggleFollow} className="text-xs px-3 py-1.5 rounded-full text-white anim-grad" style={{ backgroundImage: `linear-gradient(90deg, ${accent}, ${accent2})` }}>{iFollow ? '✓ Following' : '➕ Follow'}</button>}
+              {!isMe && <button onClick={toggleFollow} className="text-xs px-3 py-1.5 rounded-full text-white anim-grad" style={{ backgroundImage: `linear-gradient(90deg, ${T.rawAccent}, ${T.rawAccent2})`, color: T.chipText }}>{iFollow ? '✓ Following' : '➕ Follow'}</button>}
               <button onClick={() => navigator.clipboard?.writeText(shareUrl).then(() => alert('🔗 Link copied!'))} className={`text-xs px-3 py-1.5 rounded-full border ${dark ? 'border-white/30 text-white' : 'border-gray-300 text-gray-700'}`}> Share</button>
             </div>
           </div>
@@ -196,7 +202,7 @@ const PortfolioPage = () => {
       <div className="max-w-6xl mx-auto p-6 relative">
         {/* HERO */}
         <GradWrap>
-          <div className={`${card} rounded-3xl overflow-hidden transition hover:shadow-2xl relative`}>
+          <div className={`${card} rounded-3xl overflow-hidden transition hover:shadow-2xl relative`} style={cardStyle}>
             {on('particles') && <Particles color={accent} count={200} interactive={true} />}
             <div className="h-44 anim-grad relative z-10" style={{ background: u.bannerUrl ? `url(${u.bannerUrl.startsWith('http') ? u.bannerUrl : SERVER_URL + u.bannerUrl}) center/cover` : `linear-gradient(120deg, ${accent}, ${accent2}, ${accent})` }} />
             <div className="p-7 relative z-10">
@@ -207,10 +213,10 @@ const PortfolioPage = () => {
                   </div>
                 </div>
                 <div className="flex-1">
-                  <h1 className={`text-3xl font-extrabold ${theme === 'modern' ? 'text-gray-900' : 'text-white'}`} style={theme !== 'modern' && !on('typewriter') ? { background: `linear-gradient(90deg, ${accent}, ${accent2}, ${accent})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundSize: '200% 200%', animation: 'gradShift 5s ease infinite' } : {}}>
+                  <h1 className={`text-3xl font-extrabold ${txt}`} style={!on('typewriter') ? { background: `linear-gradient(90deg, ${accent}, ${accent2}, ${accent})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundSize: '200% 200%', animation: 'gradShift 5s ease infinite' } : {}}>
                     {on('typewriter') ? <Typewriter text={`${u.firstName} ${u.lastName}`} /> : `${u.firstName} ${u.lastName}`} {u.verificationStatus === 'verified' && '✅'}
                   </h1>
-                  {u.headline && <p className="text-sm mt-1 font-medium" style={{ color: theme === 'modern' ? accent : '#fff' }}>{u.headline}</p>}
+                  {u.headline && <p className="text-sm mt-1 font-medium" style={{ color: T.head }}>{u.headline}</p>}
                   <p className={`text-sm ${sub}`}>🎓 {u.university} • {u.major} {u.location && `• 📍 ${u.location}`}</p>
                   {u.openToWork && (
                     <span className="inline-flex items-center gap-1.5 mt-2 text-[10px] font-bold text-white px-3 py-1 rounded-full shadow-lg" style={{ background: 'linear-gradient(90deg,#10b981,#22d3ee)' }}>
@@ -219,10 +225,10 @@ const PortfolioPage = () => {
                   )}
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                  {!isMe && <Btn onClick={toggleFollow} className="text-sm px-4 py-2 rounded-xl text-white font-medium shadow-lg hover:opacity-90 transition anim-grad" style={{ backgroundImage: `linear-gradient(90deg, ${accent}, ${accent2})` }}>{iFollow ? '✓ Following' : '➕ Follow'}</Btn>}
+                  {!isMe && <Btn onClick={toggleFollow} className="text-sm px-4 py-2 rounded-xl text-white font-medium shadow-lg hover:opacity-90 transition anim-grad" style={{ backgroundImage: `linear-gradient(90deg, ${T.rawAccent}, ${T.rawAccent2})`, color: T.chipText }}>{iFollow ? '✓ Following' : '➕ Follow'}</Btn>}
                   {!isMe && <Btn onClick={startChat} className="text-sm px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg">💬 Message</Btn>}
                   <Btn onClick={downloadCV} className="text-sm px-4 py-2 rounded-xl bg-gray-800 text-white hover:bg-black shadow-lg">📄 CV</Btn>
-                  <Link to={`/user/${u._id}`} className="text-sm px-4 py-2 rounded-xl bg-white/20 backdrop-blur border border-white/30 hover:bg-white/30">👤 Profile</Link>
+                  <Link to={`/user/${u._id}`} className={`text-sm px-4 py-2 rounded-xl backdrop-blur border ${dark ? 'bg-white/20 border-white/30 hover:bg-white/30 text-white' : 'bg-gray-100 border-gray-300 hover:bg-gray-200 text-gray-800'}`}>👤 Profile</Link>
                 </div>
               </div>
 
@@ -254,14 +260,14 @@ const PortfolioPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
           {u.superBio && (
             <Card span="md:col-span-2">
-              <h3 className="font-bold mb-3 text-lg" style={{ color: theme === 'modern' ? accent : '#fff' }}>📖 About</h3>
+              <h3 className="font-bold mb-3 text-lg" style={{ color: T.head }}>📖 About</h3>
               <div className={`text-sm ${sub}`}><RichText text={u.superBio} /></div>
             </Card>
           )}
 
           {sections.skills !== false && (
             <Card className={txt}>
-              <h3 className="font-bold mb-3" style={{ color: theme === 'modern' ? accent : '#fff' }}>🎯 Skill Radar</h3>
+              <h3 className="font-bold mb-3" style={{ color: T.head }}>🎯 Skill Radar</h3>
               <Radar data={radarData} color={accent} />
               {on('skillBars') && <div className="mt-5"><SkillBars data={radarData} accent={accent} accent2={accent2} dark={dark} /></div>}
             </Card>
@@ -269,7 +275,7 @@ const PortfolioPage = () => {
 
           {sections.projects !== false && (
             <Card span="md:col-span-2">
-              <h3 className="font-bold mb-4" style={{ color: theme === 'modern' ? accent : '#fff' }}>📌 Projects</h3>
+              <h3 className="font-bold mb-4" style={{ color: T.head }}>📌 Projects</h3>
               {data.projects.length === 0 ? (
                 <EmptyState icon="📌" title="No projects yet" sub="Projects will appear here once published." />
               ) : (
@@ -294,18 +300,18 @@ const PortfolioPage = () => {
 
           {sections.activity !== false && (
             <Card className={txt}>
-              <h3 className="font-bold mb-3" style={{ color: theme === 'modern' ? accent : '#fff' }}>📊 Activity</h3>
+              <h3 className="font-bold mb-3" style={{ color: T.head }}>📊 Activity</h3>
               <Heatmap activity={activity} dark={dark} />
             </Card>
           )}
 
           {on('testimonials') && ratings && ratings.count > 0 && (
-            <Card><Testimonials ratings={ratings} dark={dark} accent={theme === 'modern' ? accent : '#fff'} /></Card>
+            <Card><Testimonials ratings={ratings} dark={dark} accent={T.head} /></Card>
           )}
 
           {sections.ratings !== false && ratings && ratings.count > 0 && (
             <Card>
-              <h3 className="font-bold mb-2" style={{ color: theme === 'modern' ? accent : '#fff' }}>⭐ Ratings</h3>
+              <h3 className="font-bold mb-2" style={{ color: T.head }}>⭐ Ratings</h3>
               <p className="text-4xl font-extrabold" style={{ color: accent }}>{ratings.avg}<span className="text-sm">/5</span></p>
               <p className={`text-xs ${sub}`}>{ratings.count} ratings</p>
             </Card>
@@ -317,7 +323,7 @@ const PortfolioPage = () => {
 
           {sections.links !== false && hasLinks && (
             <Card>
-              <h3 className="font-bold mb-4" style={{ color: theme === 'modern' ? accent : '#fff' }}>🔗 Links</h3>
+              <h3 className="font-bold mb-4" style={{ color: T.head }}>🔗 Links</h3>
               <div className="flex flex-col gap-3 text-sm">
                 {u.links?.github && <a className={`flex items-center gap-2 hover:opacity-70 ${txt}`} target="_blank" rel="noreferrer" href={u.links.github}><BrandIcon url={u.links.github} size={18} color={accent} /> GitHub</a>}
                 {u.links?.linkedin && <a className={`flex items-center gap-2 hover:opacity-70 ${txt}`} target="_blank" rel="noreferrer" href={u.links.linkedin}><BrandIcon url={u.links.linkedin} size={18} color={accent} /> LinkedIn</a>}
@@ -329,7 +335,7 @@ const PortfolioPage = () => {
 
           {sections.education !== false && (u.education || []).length > 0 && (
             <Card span="md:col-span-3" className={txt}>
-              <h3 className="font-bold mb-6 text-lg" style={{ color: theme === 'modern' ? accent : '#fff' }}>🎓 Education Journey</h3>
+              <h3 className="font-bold mb-6 text-lg" style={{ color: T.head }}>🎓 Education Journey</h3>
               <EduTimeline education={u.education} accent={accent} accent2={accent2} dark={dark} />
             </Card>
           )}

@@ -3,7 +3,6 @@ const Application = require('../models/Application');
 const ProjectPost = require('../models/ProjectPost');
 const { notifyUser } = require('../utils/socket');
 
-
 // @desc    Apply to join a project
 // @route   POST /api/applications/project/:projectId
 const applyToProject = asyncHandler(async (req, res) => {
@@ -16,19 +15,24 @@ const applyToProject = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error('You cannot apply to your own project.');
   }
-
   const existing = await Application.findOne({ project: project._id, applicant: req.user._id });
   if (existing) {
     res.status(400);
     throw new Error('You have already applied to this project.');
   }
-
   const application = await Application.create({
     project: project._id,
     applicant: req.user._id,
     message: req.body.message,
   });
-  await notifyUser(project.creator, 'application', `${req.user.firstName} ${req.user.lastName} applied to your project "${project.title}"`, '/');
+
+  await notifyUser(
+    project.creator,
+    'application',
+    `${req.user.firstName} ${req.user.lastName} applied to join your project "${project.title}".`,
+    `/project/${project._id}`
+  );
+
   res.status(201).json(application);
 });
 
@@ -44,7 +48,6 @@ const getProjectApplications = asyncHandler(async (req, res) => {
     res.status(403);
     throw new Error('Only the project owner can view applicants.');
   }
-
   const applications = await Application.find({ project: project._id })
     .sort({ createdAt: -1 })
     .populate('applicant', 'firstName lastName university major skills email');
@@ -64,15 +67,16 @@ const updateApplicationStatus = asyncHandler(async (req, res) => {
     res.status(403);
     throw new Error('Only the project owner can update applications.');
   }
-
   application.status = status;
   await application.save();
-   await notifyUser(
-    application.applicant,
-    status === 'accepted' ? 'application_accepted' : 'application_rejected',
-    `Your application for "${application.project.title}" was ${status}.`,
-    '/'
-  );
+
+  const projectTitle = application.project?.title || 'a project';
+  const notifType = status === 'accepted' ? 'application_accepted' : 'application_rejected';
+  const notifText = status === 'accepted'
+    ? `Your application for "${projectTitle}" was accepted! You are now part of the team.`
+    : `Your application for "${projectTitle}" was not accepted this time.`;
+
+  await notifyUser(application.applicant, notifType, notifText, `/project/${application.project._id}`);
 
   // If accepted, add to project team + award points
   if (status === 'accepted') {
@@ -81,7 +85,6 @@ const updateApplicationStatus = asyncHandler(async (req, res) => {
       project.team.push(application.applicant);
       await project.save();
     }
-    
     const { awardPoints } = require('../utils/points');
     await awardPoints(application.applicant, 10);
   }

@@ -2,11 +2,18 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { userAPI, authAPI } from '../services/api';
+import UniversitySearch from '../components/UniversitySearch';
+import FieldPicker from '../components/FieldPicker';
+import SkillSelector from '../components/SkillSelector';
 
 const CompleteProfilePage = () => {
   const { user, loading, refreshUser } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ firstName: '', lastName: '', username: '', university: '', major: '', skills: '' });
+  const [form, setForm] = useState({
+    firstName: '', lastName: '', username: '',
+    university: '', campus: '', major: '', degreeLevel: '',
+    skills: [],
+  });
   const [usernameStatus, setUsernameStatus] = useState('');
   const [error, setError] = useState('');
 
@@ -14,10 +21,8 @@ const CompleteProfilePage = () => {
   if (!user) { window.location.href = '/login'; return null; }
   if (user.university !== 'Not set') { window.location.href = '/'; return null; }
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
-
   const handleUsername = async (value) => {
-    setForm({ ...form, username: value });
+    setForm((f) => ({ ...f, username: value }));
     if (!value || value.length < 3) { setUsernameStatus(''); return; }
     try {
       const { data } = await userAPI.checkUsername(value);
@@ -28,8 +33,10 @@ const CompleteProfilePage = () => {
   const submit = async (e) => {
     e.preventDefault();
     setError('');
+    if (!form.university.trim()) return setError('Please select your university.');
+    if (!form.major || !form.degreeLevel) return setError('Please select your major and degree level.');
     try {
-      await authAPI.completeProfile(form);
+      await authAPI.completeProfile(form); // backend accepts skills as array
       await refreshUser();
       navigate('/');
     } catch (err) { setError(err.response?.data?.message || 'Failed'); }
@@ -38,21 +45,38 @@ const CompleteProfilePage = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
       <div className="max-w-md w-full bg-white p-10 rounded-xl shadow-lg space-y-4">
-        <h2 className="text-2xl font-extrabold text-gray-900 text-center"> Complete Your Profile</h2>
+        <h2 className="text-2xl font-extrabold text-gray-900 text-center">Complete Your Profile</h2>
         <p className="text-sm text-gray-500 text-center">Welcome! Set up your student profile to continue. This is required once.</p>
         {error && <div className="bg-red-100 text-red-700 p-3 rounded text-sm">{error}</div>}
         <form onSubmit={submit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <input name="firstName" placeholder="First Name" required className="input-field" onChange={handleChange} />
-            <input name="lastName" placeholder="Last Name" required className="input-field" onChange={handleChange} />
+            <input placeholder="First Name" required className="input-field" value={form.firstName}
+              onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))} />
+            <input placeholder="Last Name" required className="input-field" value={form.lastName}
+              onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))} />
           </div>
           <div>
-            <input name="username" placeholder="Username (unique)" className="input-field" onChange={(e) => handleUsername(e.target.value)} />
+            <input placeholder="Username (unique)" className="input-field" value={form.username}
+              onChange={(e) => handleUsername(e.target.value)} />
             {usernameStatus && <p className="text-xs mt-1 text-gray-600">{usernameStatus}</p>}
           </div>
-          <input name="university" placeholder="University" required className="input-field" onChange={handleChange} />
-          <input name="major" placeholder="Major (e.g., CS)" required className="input-field" onChange={handleChange} />
-          <input name="skills" placeholder="Skills (comma separated)" className="input-field" onChange={handleChange} />
+          <UniversitySearch
+            value={form.university}
+            onChange={(uni) => setForm((f) => ({ ...f, university: uni, campus: '' }))}
+            campusValue={form.campus || ''}
+            onCampusChange={(campus) => setForm((f) => ({ ...f, campus }))}
+          />
+          <FieldPicker
+            value={form.major}
+            level={form.degreeLevel}
+            onChange={(major) => setForm((f) => ({ ...f, major, degreeLevel: '' }))}
+            onLevelChange={(degreeLevel) => setForm((f) => ({ ...f, degreeLevel }))}
+          />
+          <SkillSelector
+            selectedSkills={form.skills}
+            onAdd={(skill) => setForm((f) => ({ ...f, skills: [...f.skills, skill] }))}
+            onRemove={(skill) => setForm((f) => ({ ...f, skills: f.skills.filter((s) => s !== skill) }))}
+          />
           <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Save & Continue →</button>
         </form>
       </div>

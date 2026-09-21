@@ -3,6 +3,11 @@ import { useAuth } from '../context/AuthContext';
 import { authAPI, profileAPI, userAPI, SERVER_URL } from '../services/api';
 import RichText from './RichText';
 import BrandIcon from './BrandIcon';
+import UniversitySearch from './UniversitySearch';
+import SkillSelector from './SkillSelector';
+import FieldPicker from './FieldPicker';
+import { createPortal } from 'react-dom';
+import { getPortfolioTokens } from '../utils/portfolioTheme';
 
 const PRESETS = ['#2563eb', '#7c3aed', '#059669', '#e11d48', '#d97706', '#0f172a', '#22d3ee', '#f472b6'];
 const TEMPLATES = [
@@ -15,10 +20,11 @@ const TEMPLATES = [
 ];
 
 const buildForm = (u) => ({
-  username: u.username || '', bio: u.bio || '', location: u.location || '', university: u.university || '', major: u.major || '',
+  username: u.username || '', bio: u.bio || '', location: u.location || '', university: u.university || '',
+  campus: u.campus || '', degreeLevel: u.degreeLevel || '', major: u.major || '',
   headline: u.headline || '', superBio: u.superBio || '', openToWork: !!u.openToWork,
   links: u.links || { github: '', linkedin: '', website: '' }, customLinks: u.customLinks || [],
-  education: u.education || [], skills: u.skills || [],
+  education: u.education || [], skills: Array.isArray(u.skills) ? u.skills : [],
   accentColor: u.accentColor || '#2563eb', accent2: u.accent2 || '#a855f7',
   portfolioTheme: u.portfolioTheme || 'modern', portfolioSections: u.portfolioSections || {},
   portfolioFont: u.portfolioFont || 'sans', portfolioPattern: u.portfolioPattern || 'none',
@@ -67,21 +73,24 @@ const ProfileEditorModal = ({ onClose }) => {
   const save = async () => {
     setError('');
     try {
-      await profileAPI.update({ ...form, skills: form.skills.join(', ') });
+      await profileAPI.update({
+  ...form,
+  campus: (form.campus || '').trim(),
+  skills: form.skills, // array — backend handles both formats
+});
       if (bannerFile) { const fd = new FormData(); fd.append('banner', bannerFile); await authAPI.setBanner(fd); }
       await refreshUser();
       onClose();
     } catch (err) { setError(err.response?.data?.message || 'Failed to save'); }
   };
+const TK = getPortfolioTokens(form.portfolioTheme || 'modern', form.accentColor || '#2563eb', form.accent2 || '#a855f7');
+const prevBg = TK.pageBg;
+const prevCard = TK.cardBg;
+const prevText = TK.text;
+const prevSub = TK.sub;
 
-  const T = form.portfolioTheme;
-  const prevBg = T === 'dark' ? '#000' : T === 'glass' || T === 'gradient' ? `linear-gradient(135deg, ${form.accentColor}, ${form.accent2})` : '#f3f4f6';
-  const prevCard = T === 'dark' ? '#111' : T === 'glass' ? 'rgba(255,255,255,0.12)' : '#fff';
-  const prevText = T === 'modern' ? '#111' : '#fff';
-  const prevSub = T === 'modern' ? '#6b7280' : 'rgba(255,255,255,0.75)';
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+  return createPortal(
+    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60] p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[94vh] overflow-y-auto p-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-gray-800">🚀 Profile Studio <span className="text-xs text-gray-400">— your personal website builder</span></h2>
@@ -103,9 +112,21 @@ const ProfileEditorModal = ({ onClose }) => {
                 <div className="grid grid-cols-2 gap-3">
                   <input className="input-field" placeholder="Username" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />
                   <input className="input-field" placeholder="📍 Location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
-                  <input className="input-field" placeholder="University" value={form.university} onChange={(e) => setForm({ ...form, university: e.target.value })} />
-                  <input className="input-field" placeholder="Major" value={form.major} onChange={(e) => setForm({ ...form, major: e.target.value })} />
                 </div>
+
+                <UniversitySearch
+  value={form.university}
+  onChange={(uni) => setForm((f) => ({ ...f, university: uni, campus: '' }))}
+  campusValue={form.campus || ''}
+  onCampusChange={(campus) => setForm((f) => ({ ...f, campus }))}
+/>
+
+                <FieldPicker
+  value={form.major}
+  level={form.degreeLevel}
+  onChange={(major) => setForm((f) => ({ ...f, major, degreeLevel: '' }))}
+  onLevelChange={(degreeLevel) => setForm((f) => ({ ...f, degreeLevel }))}
+/>
                 <input className="input-field" placeholder='Headline' value={form.headline} onChange={(e) => setForm({ ...form, headline: e.target.value })} maxLength={120} />
                 <input className="input-field" placeholder="Short bio (profile)" value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} maxLength={300} />
                 <div>
@@ -128,15 +149,11 @@ const ProfileEditorModal = ({ onClose }) => {
                 </label>
                 <div>
                   <p className="text-sm font-medium text-gray-700 mb-1">Skills</p>
-                  <div className="flex gap-2">
-                    <input className="input-field" placeholder="Add skill..." value={skillInput} onChange={(e) => setSkillInput(e.target.value)} />
-                    <button onClick={() => { if (skillInput.trim() && !form.skills.includes(skillInput.trim())) setForm({ ...form, skills: [...form.skills, skillInput.trim()] }); setSkillInput(''); }} className="text-white px-3 rounded" style={{ background: form.accentColor }}>+</button>
-                  </div>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {form.skills.map((s) => (
-                      <span key={s} className="text-xs px-2 py-1 rounded-full text-white flex items-center gap-1" style={{ background: `linear-gradient(90deg, ${form.accentColor}, ${form.accent2})` }}>{s}<button onClick={() => setForm({ ...form, skills: form.skills.filter((x) => x !== s) })}>✕</button></span>
-                    ))}
-                  </div>
+                  <SkillSelector
+                    selectedSkills={form.skills}
+                    onAdd={(skill) => setForm((f) => ({ ...f, skills: [...f.skills, skill] }))}
+                    onRemove={(skill) => setForm((f) => ({ ...f, skills: f.skills.filter((x) => x !== skill) }))}
+                  />
                 </div>
               </>
             )}
@@ -262,11 +279,11 @@ const ProfileEditorModal = ({ onClose }) => {
           {/* FULL LIVE PREVIEW */}
           <div className="rounded-2xl p-5 overflow-y-auto max-h-[70vh]" style={{ background: prevBg }}>
             <p className="text-[10px] uppercase tracking-widest mb-3" style={{ color: prevSub }}>Live Portfolio Preview</p>
-            <div className="rounded-xl overflow-hidden shadow-xl" style={{ background: prevCard }}>
+            <div className="rounded-xl overflow-hidden shadow-xl" style={{ background: prevCard, border: `1px solid ${TK.border}` }}>
               <div className="h-20" style={{ background: bannerPreview || (user.bannerUrl ? `url(${user.bannerUrl.startsWith('http') ? user.bannerUrl : SERVER_URL + user.bannerUrl}) center/cover` : `linear-gradient(120deg, ${form.accentColor}, ${form.accent2})`) }} />
               <div className="p-4">
                 <p className="font-extrabold" style={{ color: prevText }}>{user.firstName} {user.lastName} ✅</p>
-                <p className="text-xs mt-0.5" style={{ color: form.accentColor }}>{form.headline || 'Headline preview'}</p>
+                <p className="text-xs mt-0.5" style={{ color: TK.head }}>{form.headline || 'Headline preview'}</p>
                 <p className="text-[10px] mt-0.5" style={{ color: prevSub }}>🎓 {form.university} • {form.major}</p>
                 {form.openToWork && (
                   <span className="inline-flex items-center gap-1 mt-1 text-[9px] font-bold text-white px-2 py-0.5 rounded-full" style={{ background: 'linear-gradient(90deg,#10b981,#22d3ee)' }}>
@@ -276,12 +293,12 @@ const ProfileEditorModal = ({ onClose }) => {
                 {form.superBio && <div className="text-[10px] mt-2" style={{ color: prevSub }}><RichText text={form.superBio} /></div>}
                 {form.skills.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-2">
-                    {form.skills.map((s) => <span key={s} className="text-[9px] px-2 py-0.5 rounded-full text-white" style={{ background: `linear-gradient(90deg, ${form.accentColor}, ${form.accent2})` }}>{s}</span>)}
+                    {form.skills.map((s) => <span key={s} className="text-[9px] px-2 py-0.5 rounded-full" style={{ background: `linear-gradient(90deg, ${TK.rawAccent}, ${TK.rawAccent2})`, color: TK.chipText }}>{s}</span>)}
                   </div>
                 )}
                 {form.portfolioSections.projects !== false && projects.length > 0 && (
                   <div className="mt-3">
-                    <p className="text-[10px] font-bold mb-1" style={{ color: form.accentColor }}>📌 PROJECTS</p>
+                    <p className="text-[10px] font-bold mb-1" style={{ color: TK.head }}>📌 PROJECTS</p>
                     {projects.slice(0, 3).map((p) => (
                       <p key={p._id} className="text-[10px] mb-1" style={{ color: prevSub }}>▸ {p.title} <span className="opacity-60">({p.progress})</span></p>
                     ))}
@@ -289,23 +306,24 @@ const ProfileEditorModal = ({ onClose }) => {
                 )}
                 {form.portfolioSections.education !== false && form.education.length > 0 && (
                   <div className="mt-3">
-                    <p className="text-[10px] font-bold mb-1" style={{ color: form.accentColor }}>🎓 EDUCATION</p>
+                    <p className="text-[10px] font-bold mb-1" style={{ color: TK.head }}>🎓 EDUCATION</p>
                     {form.education.map((e, i) => <p key={i} className="text-[10px]" style={{ color: prevSub }}>▸ {e.degree} — {e.institution} ({e.startYear || '?'}–{e.endYear || 'now'}){e.gpa && ` • GPA ${e.gpa}`}</p>)}
                   </div>
                 )}
                 {form.portfolioSections.links !== false && (
                   <div className="flex gap-2 mt-3">
-                    {form.links.github && <BrandIcon url={form.links.github} size={14} color={form.accentColor} />}
-                    {form.links.linkedin && <BrandIcon url={form.links.linkedin} size={14} color={form.accentColor} />}
-                    {form.customLinks.filter((l) => l.url).map((l, i) => <BrandIcon key={i} url={l.url} size={14} color={form.accentColor} />)}
-                  </div>
+                   {form.links.github && <BrandIcon url={form.links.github} size={14} color={TK.accent} />}
+{form.links.linkedin && <BrandIcon url={form.links.linkedin} size={14} color={TK.accent} />}
+{form.customLinks.filter((l) => l.url).map((l, i) => <BrandIcon key={i} url={l.url} size={14} color={TK.accent} />)}
+                   </div>
                 )}
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

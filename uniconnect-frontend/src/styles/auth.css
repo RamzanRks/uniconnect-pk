@@ -1,0 +1,105 @@
+/* ══ UniConnect · AUTH PAGE · SUPER LEVEL ══ */
+.uc-root{--bg:#F2F5FA;--panel:#fff;--ink:#0B1F30;--muted:#6B7C93;--line:#E2E8F0;--field:#EDF1F8;--blue:#4F46E5;--cyan:#00A3FF;--green:#059669;--pink:#FF4D6D;--amber:#F59E0B;--glass:rgba(255,255,255,.82);--shadow:0 24px 70px rgba(11,31,48,.12);min-height:100vh;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;transition:background .45s,color .45s;overflow-x:hidden}
+.uc-root[data-theme='dark']{--bg:#0B1220;--panel:#111B2E;--ink:#E8EEF7;--muted:#8CA3BF;--line:#20304A;--field:#0D1626;--glass:rgba(13,22,38,.82);--shadow:0 24px 70px rgba(0,0,0,.55)}
+.uc-root::before{content:'';position:fixed;inset:0;background-image:radial-gradient(rgba(11,31,48,.10) 1px,transparent 1px);background-size:22px 22px;pointer-events:none}
+.uc-root[data-theme='dark']::before{background-image:radial-gradient(rgba(232,238,247,.07) 1px,transparent 1px)}
+
+/* ── 100% TOP BANNER ── */
+.uc-top{position:fixed;top:0;left:0;width:100%;height:64px;z-index:90;display:flex;align-items:center;justify-content:space-between;padding:0 26px;background:var(--glass);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.uc-logo{display:flex;align-items:center;gap:12px}
+.uc-logo-img{width:44px;height:44px;object-fit:contain;filter:drop-shadow(0 6px 16px rgba(10,46,92,.25))}
+.uc-logo b{font-size:17px;display:block;letter-spacing:-.3px}
+.uc-logo span{font-size:11px;color:var(--muted);display:block}
+.uc-top-right{display:flex;align-items:center;gap:10px}
+.uc-nav-btn{background:none;border:1.5px solid var(--line);color:var(--ink);padding:8px 16px;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s}
+.uc-nav-btn:hover{border-color:var(--blue);color:var(--blue)}
+.uc-nav-cta{background:var(--blue);border-color:var(--blue);color:#fff;box-shadow:0 8px 20px rgba(79,70,229,.35)}
+.uc-nav-cta:hover{background:var(--cyan);border-color:var(--cyan);color:#fff;transform:translateY(-1px)}
+.uc-switch{width:58px;height:30px;border-radius:20px;border:1.5px solid var(--line);background:var(--field);cursor:pointer;position:relative;margin-left:4px}
+.uc-knob{position:absolute;top:2px;left:3px;width:24px;height:24px;border-radius:50%;background:var(--panel);box-shadow:0 2px 8px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;font-size:13px;transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+.uc-root[data-theme='dark'] .uc-knob{transform:translateX(28px)}
+
+/* ── 3-ZONE LAYOUT ── */
+.uc-main{position:relative;z-index:1;min-height:100vh;display:grid;grid-template-columns:1.15fr 1.05fr 1.3fr;gap:18px;padding:120px 4% 20px 0;align-items:start}
+.uc-main.is-login{grid-template-columns:1.3fr .48fr;gap:24px}
+.uc-zone{min-width:0}
+.uc-zone-robot{height:calc(100vh - 64px);position:sticky;top:64px;margin-left:0;z-index:40}
+.evo-col{z-index:40}
+.uc-zone-portfolio{height:calc(100vh - 108px);position:sticky;top:84px;overflow:hidden;border:1px solid var(--line);border-radius:22px;background:var(--panel);box-shadow:var(--shadow);margin-left:-48px}
+.uc-zone-form{position:relative;top:auto;max-height:none;overflow:visible;z-index:1}
+.uc-main.is-login .uc-form-card{max-width:520px}
+
+/* ── FORM CARD ── */
+.uc-form-card{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:28px;box-shadow:var(--shadow)}
+.uc-h1{font-size:22px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px}
+.uc-sub{font-size:12px;color:var(--muted);margin-bottom:20px;line-height:1.5}
+.uc-form{display:flex;flex-direction:column;gap:13px}
+.uc-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.uc-field{display:flex;flex-direction:column;gap:7px}
+.uc-label{font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.3px;text-transform:uppercase}
+.uc-in,.uc-sel{width:100%;height:44px;padding:0 14px;border-radius:12px;background:var(--field);border:1.5px solid transparent;color:var(--ink);font-size:13.5px;font-weight:500;outline:none;transition:all .2s;font-family:inherit}
+.uc-in::placeholder{color:var(--muted);opacity:.7}
+.uc-in:focus,.uc-sel:focus{border-color:var(--blue);background:var(--panel);box-shadow:0 0 0 4px rgba(79,70,229,.14)}
+.uc-sel{appearance:none;cursor:pointer;background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3e%3cpath fill='%238CA3BF' d='M6 8L0 0h12z'/%3e%3c/svg%3e");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+.uc-in-wrap{position:relative}
+.uc-in-wrap .uc-in{padding-right:44px}
+.uc-eye{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:15px;padding:4px 6px;border-radius:6px;opacity:.7}
+.uc-eye:hover{opacity:1;background:rgba(79,70,229,.09)}
+.uc-status{font-size:11px;color:var(--muted);font-weight:600}
+.uc-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.uc-chip{padding:4px 10px;border-radius:12px;background:var(--ink);color:var(--bg);font-size:11px;font-weight:600}
+.uc-submit{display:flex;align-items:center;justify-content:center;gap:9px;height:48px;background:var(--ink);color:var(--bg);border:none;border-radius:13px;font-size:14.5px;font-weight:800;cursor:pointer;transition:all .3s;font-family:inherit;margin-top:4px}
+.uc-submit:hover{background:var(--blue);color:#fff;box-shadow:0 10px 30px rgba(79,70,229,.35)}
+.uc-submit:disabled{opacity:.6;cursor:not-allowed}
+.uc-submit.uc-done{background:var(--green);color:#fff}
+.uc-arrow{transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+.uc-submit:hover .uc-arrow{transform:translateX(6px)}
+.uc-resend{background:none;border:none;color:var(--blue);font-size:12px;font-weight:700;cursor:pointer;margin-top:4px;text-decoration:underline}
+.uc-alert{padding:10px 12px;border-radius:10px;font-size:12.5px;font-weight:600;margin-bottom:8px}
+.uc-alert-err{background:rgba(255,77,109,.09);color:var(--pink);border:1px solid rgba(255,77,109,.3)}
+.uc-alert-ok{background:rgba(5,150,105,.09);color:var(--green);border:1px solid rgba(5,150,105,.3)}
+.uc-oauth{margin-top:16px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.uc-oauth-line{display:flex;align-items:center;gap:10px;width:100%}
+.uc-oauth-line i{flex:1;height:1px;background:var(--line)}
+.uc-oauth-line span{font-size:10.5px;color:var(--muted)}
+.uc-foot{text-align:center;font-size:12.5px;color:var(--muted);margin-top:0px}
+.uc-foot button{color:var(--blue);font-weight:700;background:none;border:none;cursor:pointer;margin-left:4px;font-size:inherit}
+.uc-foot button:hover{text-decoration:underline}
+.uc-dot{margin:0 6px;color:var(--line)}
+
+/* ── responsive ── */
+@media(max-width:1180px){
+  .uc-main{grid-template-columns:1fr 1fr;grid-template-areas:"robot portfolio" "form form";gap:16px;padding:80px 3% 24px 0}
+  .uc-main.is-login{grid-template-columns:1fr;grid-template-areas:"robot" "form"}
+  .uc-zone-robot{grid-area:robot;height:400px;position:static}
+  .uc-zone-portfolio{grid-area:portfolio;height:auto;max-height:480px;position:static;margin-left:0}
+  .uc-zone-form{grid-area:form;position:static}
+}
+@media(max-width:720px){
+  .uc-main{grid-template-columns:1fr;grid-template-areas:"robot" "portfolio" "form";padding:80px 4% 24px 0}
+  .uc-zone-robot{height:320px}
+  .uc-zone-portfolio{max-height:none}
+}
+
+
+/* ══ portfolio 15% smaller + fitted ══ */
+.uc-zone-portfolio .left-panel{height:110%;padding:22px 14px}
+.uc-zone-portfolio .ticker{margin-top:auto}
+.uc-zone-portfolio .type-line{font-size:21px}
+.uc-zone-portfolio .type-caret{height:20px}
+.uc-zone-portfolio .pf-header{margin-bottom:10px}
+.uc-zone-portfolio .pf-cover{height:78px}
+.uc-zone-portfolio .pf-orbit{width:48px;height:48px}
+.uc-zone-portfolio .pf-avatar{width:70px;height:70px;margin:-36px 0 0 22px}
+.uc-zone-portfolio .pf-core{font-size:22px}
+.uc-zone-portfolio .pf-body{padding:10px 22px 0}
+.uc-zone-portfolio #pfName{font-size:20px}
+.uc-zone-portfolio .pf-status{font-size:9px;padding:4px 10px}
+.uc-zone-portfolio #pfTag{font-size:10px;margin:4px 0 10px}
+.uc-zone-portfolio .pf-badge{font-size:10px;padding:5px 9px}
+.uc-zone-portfolio .pf-sec{font-size:8.5px;margin:10px 0 6px}
+.uc-zone-portfolio .pf-chip{font-size:9.5px;padding:4px 9px}
+.uc-zone-portfolio #pfEmail{font-size:10px}
+.uc-zone-portfolio .pf-eq{height:22px}
+.uc-zone-portfolio .pf-terminal{height:92px;font-size:9.5px;padding:8px 12px}
+.uc-zone-portfolio .ticker-track{font-size:9.5px}

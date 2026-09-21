@@ -11,24 +11,19 @@ const createRating = asyncHandler(async (req, res) => {
   const { ratee, project, stars, comment } = req.body;
   const p = await ProjectPost.findById(project);
   if (!p) { res.status(404); throw new Error('Project not found'); }
-
   if (String(ratee) === String(req.user._id)) {
     res.status(400);
     throw new Error('You cannot rate yourself.');
   }
 
-  // Build the project's participant list: owner + accepted teammates
   const participants = [String(p.creator)];
   const accepted = await Application.find({ project: p._id, status: 'accepted' }).select('applicant');
   accepted.forEach((a) => participants.push(String(a.applicant)));
 
-  // The RATER must NOT be a participant (outsiders rate the team)
   if (participants.includes(String(req.user._id))) {
     res.status(403);
     throw new Error('Project owners and teammates cannot rate their own project.');
   }
-
-  // The RATEE must BE a participant (you can only rate someone who worked on it)
   if (!participants.includes(String(ratee))) {
     res.status(400);
     throw new Error('You can only rate someone who is part of this project.');
@@ -40,9 +35,13 @@ const createRating = asyncHandler(async (req, res) => {
     { upsert: true, new: true }
   );
 
-  await notifyUser(ratee, 'rating', `${req.user.firstName} ${req.user.lastName} rated you ${stars}⭐`, `/user/${req.user._id}`);
-  
-  // Award points based on stars (10 points for 5 stars, less for lower)
+  await notifyUser(
+    ratee,
+    'rating',
+    `${req.user.firstName} ${req.user.lastName} rated you ${stars} star${stars > 1 ? 's' : ''} on "${p.title}".`,
+    `/user/${req.user._id}`
+  );
+
   const { awardPoints } = require('../utils/points');
   const pointsMap = { 1: 2, 2: 4, 3: 6, 4: 8, 5: 10 };
   await awardPoints(ratee, pointsMap[stars] || 0);

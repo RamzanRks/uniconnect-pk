@@ -1,6 +1,19 @@
+import { sanitizeHtml } from '../utils/sanitize';
+
+
+
 const RichText = ({ text, className }) => {
-  if (!text) return null;
-  const lines = String(text).split('\n');
+
+ if (!text) return null;
+
+  // 🔒 SECURITY: Sanitize before processing
+  const cleanText = sanitizeHtml(text);
+
+  const lines = String(cleanText).split('\n');
+
+
+
+
 
   const parseInline = (line) => {
     const parts = [];

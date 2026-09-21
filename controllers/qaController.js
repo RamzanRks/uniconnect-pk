@@ -75,8 +75,15 @@ const createAnswer = asyncHandler(async (req, res) => {
   await awardPoints(req.user._id, 5);
   
     if (question.author.toString() !== req.user._id.toString()) {
-    await notifyUser(question.author, 'answer', `${req.user.firstName} ${req.user.lastName} answered your question "${question.title}"`, `/qa/${question._id}`);
-  }
+// Inside createAnswer, replace the notifyUser call:
+if (question.author.toString() !== req.user._id.toString()) {
+  await notifyUser(
+    question.author,
+    'answer',
+    `${req.user.firstName} ${req.user.lastName} answered your question "${question.title}".`,
+    '/qa'
+  );
+}  }
   res.status(201).json(answer);
 });
 
@@ -129,6 +136,14 @@ const acceptAnswer = asyncHandler(async (req, res) => {
   await Answer.updateMany({ question: answer.question._id }, { isAccepted: false });
   answer.isAccepted = true;
   await answer.save();
+
+  // After answer.save() and Question.findByIdAndUpdate, add:
+await notifyUser(
+  answer.author,
+  'answer',
+  `Your answer was marked as the accepted solution for "${question.title}". +15 points!`,
+  '/qa'
+);
 
   await Question.findByIdAndUpdate(answer.question._id, { isResolved: true });
   

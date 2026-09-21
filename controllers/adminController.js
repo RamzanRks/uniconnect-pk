@@ -80,7 +80,7 @@ const banUser = asyncHandler(async (req, res) => {
   await user.save();
   await ProjectPost.updateMany({ creator: user._id }, { status: 'hidden' });
   await Question.updateMany({ author: user._id }, { status: 'hidden' });
-  await notifyUser(user._id, 'strike', 'Your account has been banned for violating community guidelines.', '/');
+await notifyUser(user._id, 'strike', 'Your account has been banned for violating community guidelines.', '/profile');
     await logAudit(req.user._id, 'BAN_USER', 'User', user.firstName + ' ' + user.lastName, '', req.ip);
   res.json({ message: 'User banned and all their content hidden.' });
 });
@@ -92,7 +92,7 @@ const addStrike = asyncHandler(async (req, res) => {
   user.strikes += 1;
   if (user.strikes >= 3) user.isBanned = true;
   await user.save();
-  await notifyUser(user._id, 'strike', `You received a strike (${user.strikes}/3). ${user.strikes >= 3 ? 'You are now banned.' : 'Please follow community guidelines.'}`, '/');
+await notifyUser(user._id, 'strike', `You received a strike (${user.strikes}/3). ${user.strikes >= 3 ? 'You are now banned.' : 'Please follow community guidelines.'}`, '/profile');
     await logAudit(req.user._id, 'ADD_STRIKE', 'User', user.firstName + ' ' + user.lastName, 'Total: ' + user.strikes, req.ip);
   res.json({ message: `Strike added. Total: ${user.strikes}` });
 });
@@ -120,7 +120,7 @@ const warnUser = asyncHandler(async (req, res) => {
   const { message } = req.body;
   const user = await User.findById(req.params.id);
   if (!user) { res.status(404); throw new Error('User not found'); }
-  await notifyUser(user._id, 'warning', `Admin Warning: ${message}`, '/');
+await notifyUser(user._id, 'warning', `Admin Warning: ${message}`, '/profile');
     await logAudit(req.user._id, 'WARN_USER', 'User', user.firstName + ' ' + user.lastName, message, req.ip);
   res.json({ message: 'Warning sent.' });
 });

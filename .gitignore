@@ -1,6 +1,6 @@
 node_modules/
 .env
-lastDigest.txt
+digest.js
 uploads/
 dist/
 uniconnect-frontend/.env

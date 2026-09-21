@@ -32,7 +32,6 @@ const cleanUsername = async (username, excludeId = null) => {
   return uname;
 };
 
-// Helper: create + email a 6-digit code (console fallback in dev)
 const issueCode = async (user, subject, text) => {
   const code = String(Math.floor(100000 + Math.random() * 900000));
   user.verificationCode = code;
@@ -43,12 +42,61 @@ const issueCode = async (user, subject, text) => {
     const r = await sendMail({ to: user.email, subject, text: `${text} Code: ${code} (expires in 15 min)` });
     dev = !!r.dev;
   } catch (e) { dev = true; }
-  console.log(`🔑 [CODE] ${user.email}: ${code}`);
+
+  // 🔒 SECURITY: Only log codes in development
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`🔑 [CODE] ${user.email}: ${code}`);
+  }
+
   return { code, dev };
 };
 
+// 🎓 FULL HEC RECOGNIZED UNIVERSITIES LIST
+const allowedUniversities = [
+  "National University of Sciences and Technology (NUST)", "FAST-NUCES", "Lahore University of Management Sciences (LUMS)", "COMSATS University Islamabad (CUI)", "University of Engineering and Technology (UET)", "Air University", "GIKI (Ghulam Ishaq Khan Institute)", "University of the Punjab", "University of Karachi", "IBA Karachi", "Bahria University", "HITEC University", "Usman Institute of Technology (UIT)", "Sir Syed University of Engineering and Technology (SSUET)", "Riphah International University", "Capital University of Science & Technology", "Quaid-i-Azam University", "Pakistan Institute of Engineering and Applied Sciences (PIEAS)", "National Defence University", "Allama Iqbal Open University", "International Islamic University, Islamabad", "National University of Modern Languages (NUML)", "Sir Syed CASE Institute of Technology", "Federal Urdu University of Arts, Science and Technology", "Institute of Space Technology", "Foundation University, Islamabad", "Virtual University of Pakistan", "Shifa Tameer-e-Millat University", "Shaheed Zulfiqar Ali Bhutto Medical University", "Muslim Youth University", "National University of Technology (NUTECH)", "Pakistan Institute of Development Economics (PIDE)", "National Skills University", "IBADAT International University Islamabad", "University of Balochistan", "Bolan University of Medical & Health Sciences", "Al-Hamd Islamic University", "Balochistan University of Information Technology, Engineering and Management Sciences (BUITEMS)", "Sardar Bahadur Khan Women's University", "University of Turbat", "University of Gwadar", "University of Makran", "Balochistan University of Engineering and Technology", "Lasbela University of Agriculture, Water and Marine Sciences", "University of Loralai", "Mir Chakar Khan Rind University", "Islamia College University", "University of Peshawar", "University of Agriculture, Peshawar", "CECOS University of IT and Emerging Sciences", "University of Engineering and Technology, Peshawar", "Gandhara University", "Institute of Management Sciences, Peshawar", "IQRA National University", "Qurtuba University", "Sarhad University of Science and IT", "City University of Science and IT, Peshawar", "Shaheed Benazir Bhutto Women University", "Khyber Medical University", "Abasyn University", "University of Agriculture, Dera Ismail Khan", "Gomal University", "Abbottabad University of Science and Technology", "Kohat University of Science and Technology", "Women University Swabi", "University of Swabi", "University of Swat", "University of Engineering & Applied Sciences, Swat", "University of Veterinary & Animal Sciences KP", "University of Haripur", "Pak-Austria Fachhochschule Institute of Applied Sciences and Technology", "University of Engineering and Technology, Mardan", "Women University Mardan", "Abdul Wali Khan University Mardan", "Hazara University", "Northern University, Nowshera", "University of Science and Technology Bannu", "Shaheed Benazir Bhutto University, Sheringal", "University of Malakand", "University of Buner", "University of Technology, Nowshera", "FATA University", "University of Chitral", "University of Lakki Marwat", "Khushal Khan Khattak University", "Bacha Khan University", "University of Dir", "University of Shangla", "King Edward Medical University", "Forman Christian College University", "National College of Arts", "University of Veterinary and Animal Sciences (UVAS)", "Punjab Tianjin University of Technology", "Kinnaird College for Women University", "Government College University, Lahore (GCU)", "Lahore College for Women University", "Fatima Jinnah Medical University", "Institute of Management Sciences, Lahore", "University of Management and Technology, Lahore (UMT)", "National College of Business Administration and Economics (NCBA&E)", "University of Central Punjab (UCP)", "University of Health Sciences, Lahore", "University of Education, Lahore", "University of Lahore (UOL)", "Beaconhouse National University", "University of South Asia", "Superior University", "Minhaj University, Lahore", "Pakistan Institute of Fashion and Design (PIFD)", "Information Technology University of the Punjab (ITU)", "Lahore School of Economics", "University of Home Economics Lahore", "NUR International University", "Qarshi University", "Hajvery University", "Institute for Art and Culture", "Green International University", "Lahore Institute of Science and Technology", "Rashid Latif Khan University", "Lahore Garrison University", "Ali Institute of Education", "Imperial College of Business Studies", "Lahore Leads University", "Lahore University of Biological and Applied Sciences", "University of Child Health Sciences", "National University of Pakistan", "Pir Mehr Ali Shah Arid Agriculture University", "Fatima Jinnah Women University", "Rawalpindi Medical University", "National University of Medical Sciences", "Rawalpindi Women University", "Government Viqar-un-Nisa Women University", "University of Agriculture, Faisalabad", "Government College University, Faisalabad", "National Textile University", "Faisalabad Medical University", "The University of Faisalabad", "Government College Women University, Faisalabad", "Government Sadiq College Women University", "The Islamia University of Bahawalpur", "Cholistan University of Veterinary and Animal Sciences", "University of Wah", "University of Sargodha", "Al-Karam International Institute", "GIFT University", "International Institute of Science, Arts and Technology", "The University of Chenab", "University of Gujrat", "Government College Women University, Sialkot", "University of Sialkot", "Grand Asian University Sialkot", "NFC Institute of Engineering and Technology", "Bahauddin Zakariya University", "Women University Multan", "University of Southern Punjab", "Muhammad Nawaz Sharif University of Agriculture", "Muhammad Nawaz Sharif University of Engineering and Technology", "Multan University of Science & Technology", "Times Institute", "Nishtar Medical University", "Emerson University, Multan", "Khawaja Fareed University of Engineering and Information Technology", "Punjab University of Technology, Rasul", "University of Sahiwal", "University of Okara", "University of Jhang", "Ghazi University", "Mir Chakar Khan Rind University of Technology", "Ghazi National Institute of Engineering & Sciences", "University of Narowal", "Al-Qadir University", "Baba Guru Nanak University", "University of Chakwal", "University of Mianwali", "Namal University", "Thal University", "Kohsar University Murree", "Institute of Management & Applied Sciences", "University of Layyah", "KASB Institute of Technology", "Sindh Madressatul Islam University", "NED University of Engineering and Technology", "Dow University of Health Sciences", "Dawood University of Engineering and Technology", "Pakistan Naval Academy", "Indus Valley School of Art and Architecture", "Baqai Medical University", "Hamdard University", "Textile Institute of Pakistan", "Institute of Business Management (IoBM)", "Shaheed Zulfiqar Ali Bhutto Institute of Science and Technology (SZABIST)", "Karachi Institute of Economics and Technology (KIET)", "Greenwich University, Karachi", "Jinnah University for Women", "Iqra University", "Dadabhoy Institute of Higher Education", "Ilma University", "Preston University", "Indus University", "Aga Khan University", "Muhammad Ali Jinnah University", "Sindh Institute of Medical Sciences", "Karachi School for Business and Leadership", "Habib University", "Benazir Bhutto Shaheed University, Lyari", "Jinnah Sindh Medical University", "Shaheed Zulfiqar Ali Bhutto University of Law", "DHA Suffa University", "Nazeer Hussain University", "Newports Institute of Communications and Economics", "Shaheed Benazir Bhutto City University", "Shaheed Benazir Bhutto Dewan University", "Qalandar Shahbaz University of Modern Sciences", "Ziauddin University", "Salim Habib University", "Sohail University", "Millennium Institute of Technology and Entrepreneurship", "City University of Health Sciences", "Karachi Institute of Technology & Entrepreneurship", "Emaan Institute of Management and Sciences", "Malir University of Science and Technology", "Karachi Institute of Power Engineering (KINPOE)", "University of Art and Culture, Jamshoro", "Shaheed Allah Bux Soomro University of Art, Design and Heritages", "Liaquat University of Medical and Health Sciences", "University of Sindh", "Mehran University of Engineering and Technology", "Shaheed Benazir Bhutto University, Benazirabad", "Quaid-e-Awam University of Engineering, Science and Technology", "Peoples University of Medical and Health Sciences for Women", "Shaheed Benazir Bhutto University of Veterinary and Animal Sciences", "Isra University", "University of EAST", "Hyderabad Institute for Technical & Management Sciences", "Government College University Hyderabad", "Sukkur IBA University", "Aror University of Art, Architecture, Design & Heritage", "Begum Nusrat Bhutto Women University", "Shah Abdul Latif University", "Pir Abdul Qadir Shah Jeelani Institute of Medical Sciences", "Benazir Bhutto Shaheed University of Technology and Skill Development", "Shaheed Mohtarma Benazir Bhutto Medical University", "University of Larkano", "Sindh Agriculture University", "University of Sufism and Modern Sciences", "Shaikh Ayaz University", "University of Mirpurkhas", "Mirpur University of Science and Technology", "University of Azad Jammu and Kashmir", "University of Poonch", "Al-Khair University", "Mohi-ud-Din Islamic University", "Women University of Azad Jammu and Kashmir, Bagh", "University of Kotli", "Karakoram International University", "Baltistan University"
+];
+
+// ---- Robust university whitelist matching ----
+const normSoft = (s) => String(s || '').trim().toLowerCase();
+const normHard = (s) => normSoft(s).replace(/[^a-z0-9]/g, '');
+
+const universityLookup = new Map(allowedUniversities.map((u) => [normSoft(u), u.trim()]));
+const universityLookupHard = new Map(allowedUniversities.map((u) => [normHard(u), u.trim()]));
+
+const canonicalUniversityName = (input) => {
+  const soft = normSoft(input);
+  if (!soft) return null;
+  return universityLookup.get(soft) || universityLookupHard.get(normHard(input)) || null;
+};
+
+// degreeLevel must match the User model enum
+const DEGREE_LEVELS = ['BS', 'MS', 'PhD', 'BBA', 'MBA', 'LLB', 'LLM', 'MBBS', 'FCPS'];
+const cleanDegreeLevel = (v) => {
+  const s = String(v || '').trim();
+  return DEGREE_LEVELS.includes(s) ? s : '';
+};
+// @desc    Register a new user
+// @route   POST /api/auth/register
 const registerUser = asyncHandler(async (req, res) => {
-  const { firstName, lastName, email, password, university, major, skills, username } = req.body;
+  const { firstName, lastName, email, password, university, campus, major, degreeLevel, skills, username, honeypot } = req.body;
+
+  // 🤖 HONEYPOT TRAP (Bot Protection)
+  if (honeypot) {
+    return res.status(201).json({ message: 'User registered successfully', _id: 'fake-id', dev: true });
+  }
+
+  // 🛡️ BACKEND VALIDATION
+  const passwordRegex = /^(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,}$/;
+  if (!passwordRegex.test(password)) {
+    res.status(400);
+    throw new Error('Password must be 8+ characters with an uppercase letter, number, and symbol.');
+  }
+
+  const canonicalUniversity = canonicalUniversityName(university);
+  if (!canonicalUniversity) {
+    res.status(400);
+    throw new Error('Please select a valid university from the provided list.');
+  }
 
   const userExists = await User.findOne({ email });
   if (userExists) {
@@ -59,7 +107,12 @@ const registerUser = asyncHandler(async (req, res) => {
   const uname = await cleanUsername(username);
 
   const user = await User.create({
-    firstName, lastName, email, password, university, major, skills, username: uname,
+    firstName, lastName, email, password,
+    university: canonicalUniversity,
+    campus: String(campus || '').trim(),
+    major,
+    degreeLevel: cleanDegreeLevel(degreeLevel),
+    skills, username: uname,
   });
 
   if (user) {
@@ -115,16 +168,13 @@ const resendCode = asyncHandler(async (req, res) => {
 const googleLogin = asyncHandler(async (req, res) => {
   const { credential } = req.body;
   if (!googleClient) { res.status(501); throw new Error('Google login not configured. Add GOOGLE_CLIENT_ID.'); }
-
   const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: process.env.GOOGLE_CLIENT_ID });
   const payload = ticket.getPayload();
   const email = String(payload.email).toLowerCase();
-
-  if (process.env.TEST_MODE !== 'true' && !/\.edu(\.pk)?$/i.test(email)) {
+  if (process.env.TEST_MODE !== 'true' && !/.edu(.pk)?$/i.test(email)) {
     res.status(400);
     throw new Error('Only university .edu emails can join UniConnect PK.');
   }
-
   let user = await User.findOne({ email });
   if (!user) {
     user = await User.create({
@@ -144,73 +194,101 @@ const googleLogin = asyncHandler(async (req, res) => {
     if (payload.picture && !user.avatarUrl) user.avatarUrl = payload.picture;
     await user.save();
   }
+  if (user.isBanned) {
+    res.status(403);
+    throw new Error('Your account has been suspended for violating community guidelines.');
+  }
+  res.json({ token: generateToken(user._id, user.role) });
+});
+
+const loginUser = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+  const user = await User.findOne({ email }).select('+password +loginAttempts +lockUntil');
+
+  if (!user || !(await user.matchPassword(password))) {
+    // Increment failed attempts if user exists
+    if (user) {
+      await user.incLoginAttempts();
+
+      // Check if now locked
+      if (user.loginAttempts + 1 >= 5) {
+        res.status(423); // Locked
+        throw new Error('Account locked for 15 minutes due to too many failed attempts.');
+      }
+
+      const remaining = 5 - (user.loginAttempts + 1);
+      res.status(401);
+      throw new Error(`Invalid email or password. ${remaining} attempt(s) remaining before lockout.`);
+    }
+
+    res.status(401);
+    throw new Error('Invalid email or password');
+  }
+
+  // Check if account is locked
+  if (user.isLocked) {
+    const minutesLeft = Math.ceil((user.lockUntil - Date.now()) / 60000);
+    res.status(423);
+    throw new Error(`Account is locked. Try again in ${minutesLeft} minute(s).`);
+  }
 
   if (user.isBanned) {
     res.status(403);
     throw new Error('Your account has been suspended for violating community guidelines.');
   }
 
-  res.json({ token: generateToken(user._id, user.role) });
-});
-
-// @desc    Login (with 2FA on new devices + session tracking)
-// @route   POST /api/auth/login
-const loginUser = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
-  const user = await User.findOne({ email }).select('+password');
-
-  if (user && (await user.matchPassword(password))) {
-    if (user.isBanned) {
-      res.status(403);
-      throw new Error('Your account has been suspended for violating community guidelines.');
-    }
-
-    if (!user.emailVerified) {
-      return res.json({
-        _id: user._id,
-        name: `${user.firstName} ${user.lastName}`,
-        email: user.email,
-        university: user.university,
-        role: user.role,
-        verificationStatus: user.verificationStatus,
-        emailVerified: false,
-        token: generateToken(user._id, user.role),
-      });
-    }
-
-    // 2FA: check if this device is known
-    const fp = deviceFingerprint(req);
-    const known = (user.knownDevices || []).some((d) => d.fp === fp);
-    if (user.twoFAEnabled !== false && !known) {
-      const code = String(Math.floor(100000 + Math.random() * 900000));
-      user.twoFACode = code;
-      user.twoFAExpires = new Date(Date.now() + 15 * 60 * 1000);
-      user.pendingDevice = { fp, label: String(req.headers['user-agent'] || 'New device').slice(0, 80), ip: String(req.ip || '') };
-      await user.save();
-      console.log(`🔐 [2FA] ${user.email}: ${code}`);
-      try {
-        await sendMail({ to: user.email, subject: '🔐 UniConnect PK Login Code', text: `Your new-device login code: ${code}. Expires in 15 min.` });
-      } catch (e) { /* code in terminal */ }
-      return res.json({ twoFA: true, email: user.email });
-    }
-
-    // Known device or 2FA disabled → start session
-    const sid = createSession(user, req);
-    await user.save();
-    res.json({
+  if (!user.emailVerified) {
+    return res.json({
       _id: user._id,
       name: `${user.firstName} ${user.lastName}`,
       email: user.email,
       university: user.university,
       role: user.role,
       verificationStatus: user.verificationStatus,
-      emailVerified: true,
-      token: generateToken(user._id, user.role, sid),
+      emailVerified: false,
+      token: generateToken(user._id, user.role),
     });
-  } else {
-    res.status(401);
-    throw new Error('Invalid email or password');
   }
+
+  // 2FA: check if this device is known
+  const fp = deviceFingerprint(req);
+  const known = (user.knownDevices || []).some((d) => d.fp === fp);
+  if (user.twoFAEnabled !== false && !known) {
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    user.twoFACode = code;
+    user.twoFAExpires = new Date(Date.now() + 15 * 60 * 1000);
+    user.pendingDevice = { fp, label: String(req.headers['user-agent'] || 'New device').slice(0, 80), ip: String(req.ip || '') };
+    await user.save();
+
+    // 🔒 SECURITY: Only log in development
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`🔐 [2FA] ${user.email}: ${code}`);
+    }
+
+    try {
+      await sendMail({ to: user.email, subject: '🔐 UniConnect PK Login Code', text: `Your new-device login code: ${code}. Expires in 15 min.` });
+    } catch (e) { /* code in terminal in dev */ }
+
+    return res.json({ twoFA: true, email: user.email });
+  }
+
+  // Successful login: reset attempts
+  await user.resetLoginAttempts();
+
+  // Known device or 2FA disabled → start session
+  const sid = createSession(user, req);
+  await user.save();
+
+  res.json({
+    _id: user._id,
+    name: `${user.firstName} ${user.lastName}`,
+    email: user.email,
+    university: user.university,
+    role: user.role,
+    verificationStatus: user.verificationStatus,
+    emailVerified: true,
+    token: generateToken(user._id, user.role, sid),
+  });
 });
 
 // @desc    Verify 2FA code → trust device + start session
@@ -254,13 +332,24 @@ const getUserProfile = asyncHandler(async (req, res) => {
 // @route   PUT /api/auth/profile
 const updateProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
-  const { university, major, skills, bio, location, links, education, username, accentColor, accent2, portfolioTheme, superBio, headline, customLinks, openToWork, portfolioSections, portfolioFont, portfolioPattern, portfolioFx, graduated, graduationYear, company, openToRefer, mentor, onboarded } = req.body;
-  if (university && university !== 'Not set') user.university = university;
+  const { university, campus, degreeLevel, major, skills, bio, location, links, education, username, accentColor, accent2, portfolioTheme, superBio, headline, customLinks, openToWork, portfolioSections, portfolioFont, portfolioPattern, portfolioFx, graduated, graduationYear, company, openToRefer, mentor, onboarded } = req.body;
+  
+if (university && university !== 'Not set') {
+  const canonical = universityLookup.get(String(university).trim().toLowerCase());
+  if (!canonical) {
+    res.status(400);
+    throw new Error('Invalid university selected.');
+  }
+  user.university = canonical;
+}
+  if (campus !== undefined) user.campus = String(campus || '').trim();
+  if (degreeLevel !== undefined) user.degreeLevel = cleanDegreeLevel(degreeLevel);
   if (major && major !== 'Not set') user.major = major;
   if (bio !== undefined) user.bio = bio;
   if (location !== undefined) user.location = location;
   if (skills !== undefined) {
-    user.skills = Array.isArray(skills) ? skills : String(skills).split(',').map((s) => s.trim()).filter(Boolean);
+    user.skills = (Array.isArray(skills) ? skills : String(skills).split(','))
+      .map((s) => String(s).trim()).filter(Boolean);
   }
   if (links !== undefined) user.links = { ...user.links, ...links };
   if (education !== undefined && Array.isArray(education)) user.education = education;
@@ -270,7 +359,7 @@ const updateProfile = asyncHandler(async (req, res) => {
   if (portfolioFont !== undefined) user.portfolioFont = portfolioFont;
   if (portfolioPattern !== undefined) user.portfolioPattern = portfolioPattern;
   if (portfolioFx !== undefined) user.portfolioFx = { ...user.portfolioFx, ...portfolioFx };
-    if (graduated !== undefined) user.graduated = !!graduated;
+  if (graduated !== undefined) user.graduated = !!graduated;
   if (graduationYear !== undefined) user.graduationYear = graduationYear ? Number(graduationYear) : undefined;
   if (company !== undefined) user.company = company;
   if (openToRefer !== undefined) user.openToRefer = !!openToRefer;
@@ -280,7 +369,7 @@ const updateProfile = asyncHandler(async (req, res) => {
   if (headline !== undefined) user.headline = headline;
   if (customLinks !== undefined && Array.isArray(customLinks)) user.customLinks = customLinks;
   if (openToWork !== undefined) user.openToWork = !!openToWork;
-    if (onboarded !== undefined) {
+  if (onboarded !== undefined) {
     const wasOnboarded = !!user.onboarded;
     user.onboarded = !!onboarded;
     if (!wasOnboarded && user.onboarded) {
@@ -289,7 +378,6 @@ const updateProfile = asyncHandler(async (req, res) => {
     }
   }
   if (portfolioSections !== undefined) user.portfolioSections = { ...user.portfolioSections, ...portfolioSections };
-
   await user.save();
   res.json(user);
 });
@@ -302,6 +390,11 @@ const changePassword = asyncHandler(async (req, res) => {
   if (!(await user.matchPassword(currentPassword))) {
     res.status(400);
     throw new Error('Current password is incorrect.');
+  }
+  const passwordRegex = /^(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,}$/;
+  if (!passwordRegex.test(newPassword)) {
+    res.status(400);
+    throw new Error('Password must be 8+ characters with an uppercase letter, number, and symbol.');
   }
   user.password = newPassword;
   await user.save();
@@ -327,6 +420,11 @@ const resetPassword = asyncHandler(async (req, res) => {
   if (!user.verificationCode || user.verificationCode !== String(code) || !user.verificationCodeExpires || user.verificationCodeExpires < new Date()) {
     res.status(400);
     throw new Error('Invalid or expired code.');
+  }
+  const passwordRegex = /^(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,}$/;
+  if (!passwordRegex.test(newPassword)) {
+    res.status(400);
+    throw new Error('Password must be 8+ characters with an uppercase letter, number, and symbol.');
   }
   user.password = newPassword;
   user.verificationCode = undefined;
@@ -410,11 +508,20 @@ const checkCode = asyncHandler(async (req, res) => {
 const completeProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
   if (user.university !== 'Not set') { res.status(400); throw new Error('Profile already completed.'); }
-  const { firstName, lastName, username, university, major, skills } = req.body;
+  const { firstName, lastName, username, university, campus, degreeLevel, major, skills } = req.body;
   if (!firstName || !lastName || !university || !major) { res.status(400); throw new Error('All fields are required.'); }
+  
+  const canonicalUniversity = canonicalUniversityName(university);
+  if (!canonicalUniversity) {
+    res.status(400);
+    throw new Error('Invalid university selected.');
+  }
+
   user.firstName = firstName;
   user.lastName = lastName;
-  user.university = university;
+  user.university = canonicalUniversity;
+  user.campus = String(campus || '').trim();
+  user.degreeLevel = cleanDegreeLevel(degreeLevel);
   user.major = major;
   if (skills) user.skills = Array.isArray(skills) ? skills : String(skills).split(',').map((s) => s.trim()).filter(Boolean);
   if (username) user.username = await cleanUsername(username, user._id);
@@ -489,5 +596,5 @@ module.exports = {
   requestNameChange, setAvatar, removeAvatar, requestVerification, exportMyData,
   verifyEmail, resendCode, googleLogin, changePassword, forgotPassword, resetPassword,
   checkCode, completeProfile, setBanner,
-  getSessions, logoutOthers, setTwoFA,logoutSession,updateNotifPrefs,
+  getSessions, logoutOthers, setTwoFA, logoutSession, updateNotifPrefs,
 };

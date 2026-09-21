@@ -5,12 +5,39 @@ export const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:5
 
 const api = axios.create({ baseURL: API_URL });
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-}, (error) => Promise.reject(error));
+// Store CSRF token from server responses
+let csrfToken = null;
 
+// Response interceptor: capture CSRF token from headers
+api.interceptors.response.use(
+  (response) => {
+    const token = response.headers['x-csrf-token'];
+    if (token) csrfToken = token;
+    return response;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Request interceptor: attach auth + CSRF tokens
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+
+    // Attach CSRF token for mutation requests
+    if (csrfToken && ['post', 'put', 'delete', 'patch'].includes(config.method)) {
+      config.headers['X-CSRF-Token'] = csrfToken;
+    }
+
+    // Always send this header (additional CSRF protection)
+    config.headers['X-Requested-With'] = 'XMLHttpRequest';
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// ... rest of the file stays the same (all API exports) ...
 export const authAPI = {
   register: (userData) => api.post('/auth/register', userData),
   login: (credentials) => api.post('/auth/login', credentials),
@@ -59,6 +86,8 @@ export const qaAPI = {
   reportQuestion: (id, reportData) => api.post(`/qa/${id}/report`, reportData),
   acceptAnswer: (id) => api.put(`/qa/answers/${id}/accept`),
 };
+
+
 
 export const applicationAPI = {
   apply: (projectId, data) => api.post(`/applications/project/${projectId}`, data),
@@ -180,6 +209,13 @@ export const aiAPI = {
   ask: (question) => api.post('/ai/ask', { question }),
 };
 export const alumniAPI = { list: (params) => api.get('/users/alumni', { params }) };
+
+
+
+export const particleAPI = {
+  regenerate: () => api.post('/particle/regenerate'),
+  uploadCutout: (formData) => api.post('/particle/upload-cutout', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+};
 
 export default api;
 

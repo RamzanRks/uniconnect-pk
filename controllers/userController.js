@@ -177,6 +177,8 @@ const toggleTopic = asyncHandler(async (req, res) => {
     user.followedTopics.push(tag);
   }
   await user.save();
+  const { queueParticleProcessing } = require('../utils/particle');
+queueParticleProcessing(user._id);
   res.json({ followedTopics: user.followedTopics });
 });
 

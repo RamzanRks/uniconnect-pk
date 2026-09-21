@@ -37,9 +37,29 @@ const userSchema = new mongoose.Schema(
       },
     },
 
+
+    
     password: { type: String, required: true, minlength: [8, 'Password must be at least 8 characters'], select: false },
-    university: { type: String, required: [true, 'University name is required'], trim: true },
-    major: { type: String, required: true, trim: true },
+    university: {
+  type: String,
+  required: [true, 'University name is required'],
+  trim: true
+},
+
+campus: {
+  type: String,
+  default: '',
+  trim: true
+},
+
+  major: { type: String, required: true, trim: true },
+
+degreeLevel: {
+  type: String,
+  enum: ['BS', 'MS', 'PhD', 'BBA', 'MBA', 'LLB', 'LLM', 'MBBS', 'FCPS', ''],
+  default: ''
+},
+
     skills: [{ type: String, trim: true }],
     bio: { type: String, maxlength: 300, default: '' },
     location: { type: String, default: '' },
@@ -128,6 +148,7 @@ const userSchema = new mongoose.Schema(
     ],
 
     avatarUrl: { type: String, default: null },
+    particleCutoutUrl: { type: String, default: '' },
     idCardUrl: { type: String, default: null },
 
     followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
@@ -151,6 +172,13 @@ const userSchema = new mongoose.Schema(
     // Anti-Troll System
     strikes: { type: Number, default: 0 },
     isBanned: { type: Boolean, default: false },
+
+    // Add these fields to the userSchema definition:
+
+// Account lockout (Milestone 6 - Security)
+loginAttempts: { type: Number, default: 0 },
+lockUntil: { type: Date, default: null },
+
   },
   { timestamps: true }
 );
@@ -169,6 +197,33 @@ userSchema.pre('save', async function () {
 // Compare entered password with hashed password in database
 userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
+};
+
+// Virtual: is the account currently locked?
+userSchema.virtual('isLocked').get(function () {
+  return !!(this.lockUntil && this.lockUntil > Date.now());
+});
+
+// Method: increment failed login attempts
+userSchema.methods.incLoginAttempts = async function () {
+  // Reset if lock has expired
+  if (this.lockUntil && this.lockUntil < Date.now()) {
+    return this.resetLoginAttempts();
+  }
+
+  const updates = { $inc: { loginAttempts: 1 } };
+
+  // Lock after 5 failed attempts
+  if (this.loginAttempts + 1 >= 5) {
+    updates.$set = { lockUntil: Date.now() + 15 * 60 * 1000 }; // 15 min lock
+  }
+
+  return this.updateOne(updates);
+};
+
+// Method: reset login attempts on successful login
+userSchema.methods.resetLoginAttempts = function () {
+  return this.updateOne({ $set: { loginAttempts: 0, lockUntil: null } });
 };
 
 module.exports = mongoose.model('User', userSchema);

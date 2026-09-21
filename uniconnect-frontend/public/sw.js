@@ -1,4 +1,4 @@
-const CACHE_NAME = 'uniconnect-v1';
+const CACHE_NAME = 'uniconnect-v3';   // bump so old favicon cache dies
 const OFFLINE_URL = '/offline.html';
 
 // Install: Cache the offline shell immediately

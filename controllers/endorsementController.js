@@ -24,7 +24,13 @@ const toggleEndorsement = asyncHandler(async (req, res) => {
   } else {
     try {
       await Endorsement.create({ endorser: req.user._id, endorsee: endorseeId, skill });
-      await notifyUser(endorseeId, 'endorsement', `${req.user.firstName} endorsed you for "${skill}"`, `/user/${req.user._id}`);
+
+await notifyUser(
+  endorseeId,
+  'endorsement',
+  `${req.user.firstName} ${req.user.lastName} endorsed you for "${skill}".`,
+  `/user/${req.user._id}`
+);
     } catch (e) {
       if (e.code !== 11000) throw e; // double-click duplicate = already endorsed, ignore
     }

@@ -62,7 +62,14 @@ const createComment = asyncHandler(async (req, res) => {
 
   const post = await ProjectPost.findById(req.params.id);
   if (post && post.creator.toString() !== req.user._id.toString()) {
-    await notifyUser(post.creator, 'reaction', `${req.user.firstName} commented on "${post.title}"`, `/project/${post._id}`);
+if (post && post.creator.toString() !== req.user._id.toString()) {
+  await notifyUser(
+    post.creator,
+    'reaction',
+    `${req.user.firstName} ${req.user.lastName} commented on your project "${post.title}".`,
+    `/project/${post._id}`
+  );
+}
   }
 
   res.status(201).json(await comment.populate('author', 'firstName lastName avatarUrl'));
