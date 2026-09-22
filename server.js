@@ -1,4 +1,13 @@
-﻿const dns = require('dns');
+﻿// Polyfill for dependencies that incorrectly expect `crypto` to be a global variable
+const nodeCrypto = require('crypto');
+if (!globalThis.crypto) {
+  globalThis.crypto = nodeCrypto;
+}
+if (typeof crypto === 'undefined') {
+  global.crypto = nodeCrypto;
+}
+
+const dns = require('dns');
 dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 const express = require('express');
