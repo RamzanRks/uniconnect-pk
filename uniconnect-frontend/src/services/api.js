@@ -6,31 +6,26 @@ export const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:5
 const api = axios.create({ baseURL: API_URL });
 
 // Store CSRF token from server responses
-let csrfToken = null;
+// let csrfToken = null;
 
 // Response interceptor: capture CSRF token from headers
-api.interceptors.response.use(
-  (response) => {
-    const token = response.headers['x-csrf-token'];
-    if (token) csrfToken = token;
-    return response;
-  },
-  (error) => Promise.reject(error)
-);
+// api.interceptors.response.use(
+//   (response) => {
+//     const token = response.headers['x-csrf-token'];
+//     if (token) csrfToken = token;
+//     return response;
+//   },
+//   (error) => Promise.reject(error)
+// );
 
-// Request interceptor: attach auth + CSRF tokens
+// Request interceptor: attach JWT authentication
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
 
-    // Attach CSRF token for mutation requests
-    if (csrfToken && ['post', 'put', 'delete', 'patch'].includes(config.method)) {
-      config.headers['X-CSRF-Token'] = csrfToken;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
-
-    // Always send this header (additional CSRF protection)
-    config.headers['X-Requested-With'] = 'XMLHttpRequest';
 
     return config;
   },

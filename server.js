@@ -20,7 +20,7 @@ const http = require('http');
 const connectDB = require('./config/db');
 const { initSocket } = require('./utils/socket');
 const { notFound, globalErrorHandler } = require('./middleware/errorMiddleware');
-const { validateCsrf, attachCsrfToken } = require('./middleware/csrfMiddleware');
+//const { validateCsrf, attachCsrfToken } = require('./middleware/csrfMiddleware');
 const {
   globalLimiter,
   loginLimiter,
@@ -49,12 +49,13 @@ app.use(
         styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         fontSrc: ["'self'", 'https://fonts.gstatic.com'],
         imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
-        connectSrc: [
-          "'self'",
-          process.env.FRONTEND_URL || 'http://localhost:5173',
-          'ws:',
-          'wss:',
-        ],
+       // ✅ FIXED
+connectSrc: [
+  "'self'",
+  ...(process.env.FRONTEND_URL || 'http://localhost:5173').split(','), // Splits multiple URLs safely
+  'ws:',
+  'wss:',
+],
         frameSrc: ["'self'", 'https://accounts.google.com'],
         objectSrc: ["'none'"],
         upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
@@ -89,10 +90,10 @@ app.use(
     allowedHeaders: [
       'Content-Type',
       'Authorization',
-      'X-CSRF-Token',
+   //   'X-CSRF-Token',
       'X-Requested-With',
     ],
-    exposedHeaders: ['X-CSRF-Token'],
+   
   })
 );
 
@@ -111,7 +112,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // ═══════════════════════════════════════════
 // 🔒 SECURITY: CSRF protection on mutations
 // ═══════════════════════════════════════════
-app.use('/api/', validateCsrf);
+// app.use('/api/', validateCsrf);
 
 // ═══════════════════════════════════════════
 // Routes with specific rate limiters
@@ -185,5 +186,5 @@ initSocket(server);
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-  console.log(`🔒 Security: CSRF=${process.env.NODE_ENV !== 'test'}, Rate Limiting=ON, Helmet CSP=ON`);
+  console.log(`🔒 Security: JWT Auth=ON, Rate Limiting=ON, Helmet CSP=ON`);
 });

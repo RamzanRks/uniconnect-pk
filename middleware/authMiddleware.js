@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const asyncHandler = require('../utils/asyncHandler');
 const User = require('../models/User');
-const { generateCsrfToken } = require('./csrfMiddleware'); // ✅ Import this
+//const { generateCsrfToken } = require('./csrfMiddleware'); // ✅ Import this
 
 const protect = asyncHandler(async (req, res, next) => {
   let token;
@@ -24,9 +24,7 @@ const protect = asyncHandler(async (req, res, next) => {
         throw new Error('This session was ended. Please login again.');
       }
 
-      // ✅ FIX: Generate and attach CSRF token here, after req.user is populated
-      const csrfToken = generateCsrfToken(req.user._id.toString());
-      res.setHeader('X-CSRF-Token', csrfToken);
+  
 
     } catch (error) {
       res.status(401);
